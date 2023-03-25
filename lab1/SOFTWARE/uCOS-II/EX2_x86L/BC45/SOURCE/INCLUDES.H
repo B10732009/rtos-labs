@@ -10,15 +10,15 @@
 *********************************************************************************************************
 */
 
-#include <conio.h>
-#include <ctype.h>
-#include <dos.h>
-#include <setjmp.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include    <stdio.h>
+#include    <string.h>
+#include    <ctype.h>
+#include    <stdlib.h>
+#include    <conio.h>
+#include    <dos.h>
+#include    <setjmp.h>
 
-#include "\software\blocks\pc\bc45\pc.h"
-#include "\software\ucos-ii\ix86l\bc45\os_cpu.h"
-#include "\software\ucos-ii\source\ucos_ii.h"
-#include "os_cfg.h"
+#include    "\software\ucos-ii\ix86l\bc45\os_cpu.h"
+#include    "os_cfg.h"
+#include    "\software\ucos-ii\source\ucos_ii.h"
+#include    "\software\blocks\pc\bc45\pc.h"

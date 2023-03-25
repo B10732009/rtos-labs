@@ -12,7 +12,7 @@
 *********************************************************************************************************
 */
 
-#ifndef OS_MASTER_FILE
+#ifndef  OS_MASTER_FILE
 #include "includes.h"
 #endif
 
@@ -32,22 +32,24 @@
 *********************************************************************************************************
 */
 
-void OSTimeDly(INT16U ticks) {
-#if OS_CRITICAL_METHOD == 3 /* Allocate storage for CPU status register           */
-  OS_CPU_SR cpu_sr;
-#endif
+void  OSTimeDly (INT16U ticks)
+{
+#if OS_CRITICAL_METHOD == 3                      /* Allocate storage for CPU status register           */
+    OS_CPU_SR  cpu_sr;
+#endif    
 
-  if (ticks > 0) { /* 0 means no delay!         */
-    OS_ENTER_CRITICAL();
-    if ((OSRdyTbl[OSTCBCur->OSTCBY] &= ~OSTCBCur->OSTCBBitX) == 0) { /* Delay current task        */
-      OSRdyGrp &= ~OSTCBCur->OSTCBBitY;
+
+    if (ticks > 0) {                                                      /* 0 means no delay!         */
+        OS_ENTER_CRITICAL();
+        if ((OSRdyTbl[OSTCBCur->OSTCBY] &= ~OSTCBCur->OSTCBBitX) == 0) {  /* Delay current task        */
+            OSRdyGrp &= ~OSTCBCur->OSTCBBitY;
+        }
+        OSTCBCur->OSTCBDly = ticks;                                       /* Load ticks in TCB         */
+        OS_EXIT_CRITICAL();
+        OS_Sched();                                                       /* Find next task to run!    */
     }
-    OSTCBCur->OSTCBDly = ticks; /* Load ticks in TCB         */
-    OS_EXIT_CRITICAL();
-    OS_Sched(); /* Find next task to run!    */
-  }
 }
-/*$PAGE*/
+/*$PAGE*/
 /*
 *********************************************************************************************************
 *                                     DELAY TASK FOR SPECIFIED TIME
@@ -74,38 +76,40 @@ void OSTimeDly(INT16U ticks) {
 */
 
 #if OS_TIME_DLY_HMSM_EN > 0
-INT8U OSTimeDlyHMSM(INT8U hours, INT8U minutes, INT8U seconds, INT16U milli) {
-  INT32U ticks;
-  INT16U loops;
+INT8U  OSTimeDlyHMSM (INT8U hours, INT8U minutes, INT8U seconds, INT16U milli)
+{
+    INT32U ticks;
+    INT16U loops;
 
-  if (hours > 0 || minutes > 0 || seconds > 0 || milli > 0) {
-    if (minutes > 59) {
-      return (OS_TIME_INVALID_MINUTES); /* Validate arguments to be within range              */
+
+    if (hours > 0 || minutes > 0 || seconds > 0 || milli > 0) {
+        if (minutes > 59) {
+            return (OS_TIME_INVALID_MINUTES);    /* Validate arguments to be within range              */
+        }
+        if (seconds > 59) {
+            return (OS_TIME_INVALID_SECONDS);
+        }
+        if (milli > 999) {
+            return (OS_TIME_INVALID_MILLI);
+        }
+                                                 /* Compute the total number of clock ticks required.. */
+                                                 /* .. (rounded to the nearest tick)                   */
+        ticks = ((INT32U)hours * 3600L + (INT32U)minutes * 60L + (INT32U)seconds) * OS_TICKS_PER_SEC
+              + OS_TICKS_PER_SEC * ((INT32U)milli + 500L / OS_TICKS_PER_SEC) / 1000L;
+        loops = (INT16U)(ticks / 65536L);        /* Compute the integral number of 65536 tick delays   */
+        ticks = ticks % 65536L;                  /* Obtain  the fractional number of ticks             */
+        OSTimeDly((INT16U)ticks);
+        while (loops > 0) {
+            OSTimeDly(32768);
+            OSTimeDly(32768);
+            loops--;
+        }
+        return (OS_NO_ERR);
     }
-    if (seconds > 59) {
-      return (OS_TIME_INVALID_SECONDS);
-    }
-    if (milli > 999) {
-      return (OS_TIME_INVALID_MILLI);
-    }
-    /* Compute the total number of clock ticks required.. */
-    /* .. (rounded to the nearest tick)                   */
-    ticks = ((INT32U)hours * 3600L + (INT32U)minutes * 60L + (INT32U)seconds) * OS_TICKS_PER_SEC +
-            OS_TICKS_PER_SEC * ((INT32U)milli + 500L / OS_TICKS_PER_SEC) / 1000L;
-    loops = (INT16U)(ticks / 65536L); /* Compute the integral number of 65536 tick delays   */
-    ticks = ticks % 65536L;           /* Obtain  the fractional number of ticks             */
-    OSTimeDly((INT16U)ticks);
-    while (loops > 0) {
-      OSTimeDly(32768);
-      OSTimeDly(32768);
-      loops--;
-    }
-    return (OS_NO_ERR);
-  }
-  return (OS_TIME_ZERO_DLY);
+    return (OS_TIME_ZERO_DLY);
 }
 #endif
-/*$PAGE*/
+/*$PAGE*/
 /*
 *********************************************************************************************************
 *                                         RESUME A DELAYED TASK
@@ -131,39 +135,41 @@ INT8U OSTimeDlyHMSM(INT8U hours, INT8U minutes, INT8U seconds, INT16U milli) {
 */
 
 #if OS_TIME_DLY_RESUME_EN > 0
-INT8U OSTimeDlyResume(INT8U prio) {
-#if OS_CRITICAL_METHOD == 3 /* Allocate storage for CPU status register           */
-  OS_CPU_SR cpu_sr;
-#endif
-  OS_TCB *ptcb;
+INT8U  OSTimeDlyResume (INT8U prio)
+{
+#if OS_CRITICAL_METHOD == 3                      /* Allocate storage for CPU status register           */
+    OS_CPU_SR  cpu_sr;
+#endif    
+    OS_TCB    *ptcb;
 
-  if (prio >= OS_LOWEST_PRIO) {
-    return (OS_PRIO_INVALID);
-  }
-  OS_ENTER_CRITICAL();
-  ptcb = (OS_TCB *)OSTCBPrioTbl[prio]; /* Make sure that task exist                */
-  if (ptcb != (OS_TCB *)0) {
-    if (ptcb->OSTCBDly != 0) {                                  /* See if task is delayed                   */
-      ptcb->OSTCBDly = 0;                                       /* Clear the time delay                     */
-      if ((ptcb->OSTCBStat & OS_STAT_SUSPEND) == OS_STAT_RDY) { /* See if task is ready to run  */
-        OSRdyGrp |= ptcb->OSTCBBitY;                            /* Make task ready to run       */
-        OSRdyTbl[ptcb->OSTCBY] |= ptcb->OSTCBBitX;
-        OS_EXIT_CRITICAL();
-        OS_Sched(); /* See if this is new highest priority      */
-      } else {
-        OS_EXIT_CRITICAL(); /* Task may be suspended                    */
-      }
-      return (OS_NO_ERR);
-    } else {
-      OS_EXIT_CRITICAL();
-      return (OS_TIME_NOT_DLY); /* Indicate that task was not delayed       */
+
+    if (prio >= OS_LOWEST_PRIO) {
+        return (OS_PRIO_INVALID);
     }
-  }
-  OS_EXIT_CRITICAL();
-  return (OS_TASK_NOT_EXIST); /* The task does not exist                  */
+    OS_ENTER_CRITICAL();
+    ptcb = (OS_TCB *)OSTCBPrioTbl[prio];                   /* Make sure that task exist                */
+    if (ptcb != (OS_TCB *)0) {
+        if (ptcb->OSTCBDly != 0) {                         /* See if task is delayed                   */
+            ptcb->OSTCBDly  = 0;                           /* Clear the time delay                     */
+            if ((ptcb->OSTCBStat & OS_STAT_SUSPEND) == OS_STAT_RDY) {  /* See if task is ready to run  */
+                OSRdyGrp               |= ptcb->OSTCBBitY;             /* Make task ready to run       */
+                OSRdyTbl[ptcb->OSTCBY] |= ptcb->OSTCBBitX;
+                OS_EXIT_CRITICAL();
+                OS_Sched();                                /* See if this is new highest priority      */
+            } else {
+                OS_EXIT_CRITICAL();                        /* Task may be suspended                    */
+            }
+            return (OS_NO_ERR);
+        } else {
+            OS_EXIT_CRITICAL();
+            return (OS_TIME_NOT_DLY);                      /* Indicate that task was not delayed       */
+        }
+    }
+    OS_EXIT_CRITICAL();
+    return (OS_TASK_NOT_EXIST);                            /* The task does not exist                  */
 }
-#endif
-/*$PAGE*/
+#endif    
+/*$PAGE*/
 /*
 *********************************************************************************************************
 *                                         GET CURRENT SYSTEM TIME
@@ -178,18 +184,20 @@ INT8U OSTimeDlyResume(INT8U prio) {
 */
 
 #if OS_TIME_GET_SET_EN > 0
-INT32U OSTimeGet(void) {
-#if OS_CRITICAL_METHOD == 3 /* Allocate storage for CPU status register           */
-  OS_CPU_SR cpu_sr;
-#endif
-  INT32U ticks;
+INT32U  OSTimeGet (void)
+{
+#if OS_CRITICAL_METHOD == 3                      /* Allocate storage for CPU status register           */
+    OS_CPU_SR  cpu_sr;
+#endif    
+    INT32U     ticks;
 
-  OS_ENTER_CRITICAL();
-  ticks = OSTime;
-  OS_EXIT_CRITICAL();
-  return (ticks);
+
+    OS_ENTER_CRITICAL();
+    ticks = OSTime;
+    OS_EXIT_CRITICAL();
+    return (ticks);
 }
-#endif
+#endif    
 
 /*
 *********************************************************************************************************
@@ -204,13 +212,15 @@ INT32U OSTimeGet(void) {
 */
 
 #if OS_TIME_GET_SET_EN > 0
-void OSTimeSet(INT32U ticks) {
-#if OS_CRITICAL_METHOD == 3 /* Allocate storage for CPU status register           */
-  OS_CPU_SR cpu_sr;
-#endif
+void  OSTimeSet (INT32U ticks)
+{
+#if OS_CRITICAL_METHOD == 3                      /* Allocate storage for CPU status register           */
+    OS_CPU_SR  cpu_sr;
+#endif    
 
-  OS_ENTER_CRITICAL();
-  OSTime = ticks;
-  OS_EXIT_CRITICAL();
+
+    OS_ENTER_CRITICAL();
+    OSTime = ticks;
+    OS_EXIT_CRITICAL();
 }
-#endif
+#endif    
