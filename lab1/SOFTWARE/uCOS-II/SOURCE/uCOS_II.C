@@ -11,11 +11,10 @@
 *********************************************************************************************************
 */
 
-#define  OS_GLOBALS                           /* Declare GLOBAL variables                              */
+#define OS_GLOBALS /* Declare GLOBAL variables                              */
 #include "includes.h"
 
-
-#define  OS_MASTER_FILE                       /* Prevent the following files from including includes.h */
+#define OS_MASTER_FILE /* Prevent the following files from including includes.h */
 #include "\software\ucos-ii\source\os_core.c"
 #include "\software\ucos-ii\source\os_flag.c"
 #include "\software\ucos-ii\source\os_mbox.c"
