@@ -393,6 +393,7 @@ void  OSTimeTick (void)
             OS_EXIT_CRITICAL();
         }
     }
+    OSTCBCur->computime = OSTCBCur->computime - 1 ; // henry modified
 }
 /*$PAGE*/
 /*

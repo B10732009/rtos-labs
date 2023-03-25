@@ -408,6 +408,8 @@ typedef struct os_tcb {
 #if OS_TASK_DEL_EN > 0
     BOOLEAN        OSTCBDelReq;        /* Indicates whether a task needs to delete itself              */
 #endif
+    int period ; // henry modified 
+    int computime ;  // henry modefied
 } OS_TCB;
 
 /*$PAGE*/
