@@ -62,8 +62,8 @@ void  main (void)
     RandomSem   = OSSemCreate(1);                          /* Random number semaphore                  */
 
     OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
-    // OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
-    // OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
+    OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
+    OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
     
     InitMsg();
 
@@ -86,7 +86,6 @@ void  Task1 (void *pdata)
     int end ;
     int todelay ;
     int count = 1 ;
-    char str[50] ;
     OSTCBCur->computime = 1 ;
     OSTCBCur->period = 3 ;
     pdata = pdata;                                         /* Prevent compiler warning                 */
@@ -111,11 +110,12 @@ void  Task1 (void *pdata)
         start += OSTCBCur->period;
         OSTCBCur->computime = 1 ; // task1的計算時間是1
         if ( todelay < 0 ) {
-          // PC_DispStr( 0, count, "task1 Deadline!", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-          count = count + 3 ;
+          OS_ENTER_CRITICAL();
+          printf("Task1 Deadline!\n") ;
+          OS_EXIT_CRITICAL();
         } // if   
         else {
-          sprintf(str, "Time Ticks:%d Task1 finish!", OSTimeGet()) ; 
+          //sprintf(str, "Time Ticks:%d Task1 finish!", OSTimeGet()) ; 
           //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
           
           
@@ -144,26 +144,27 @@ void  Task2() {
     int end ;
     int todelay ;
     int count = 2 ;
-    char str[50] ;
     OSTCBCur->computime = 3 ;
     OSTCBCur->period = 6 ;
+    start = OSTimeGet() ;
     while(1) {
-      start = OSTimeGet() ;
       while( OSTCBCur->computime > 0 )
         ; // Busywaiting 
-       end = OSTimeGet() ;
-       todelay = OSTCBCur->period - (end-start) ;
-       OSTCBCur->computime = 3 ; // task2的計算時間是3
-       if ( todelay < 0 ) {
-         PC_DispStr( 0, count, "task2 Deadline!", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-         count = count + 3 ;
-       } // if   
-       else {
-         sprintf(str, "Time Ticks:%d Task2 finish!", OSTimeGet()) ; 
-         PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-         count = count + 3 ;
-         OSTimeDly(todelay) ;
-       } // else       
+      end = OSTimeGet() ;
+      todelay = OSTCBCur->period - (end-start) ;
+      start = start + OSTCBCur->period ; 
+      OSTCBCur->computime = 3 ; // task2的計算時間是3
+      if ( todelay < 0 ) {
+        OS_ENTER_CRITICAL();
+        printf("Task2 Deadline!\n") ;
+        OS_EXIT_CRITICAL();
+      } // if   
+      else {
+        //sprintf(str, "Time Ticks:%d Task2 finish!", OSTimeGet()) ; 
+        //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+        //count = count + 3 ;
+        OSTimeDly(todelay) ;
+      } // else       
       
     } // while 
 
@@ -174,27 +175,27 @@ void  Task3() {
     int end ;
     int todelay ;
     int count = 3 ;
-    char str[50] ;
     OSTCBCur->computime = 4 ;
     OSTCBCur->period = 9 ;
+    start = OSTimeGet() ;
     while(1) {
-      start = OSTimeGet() ;
       while( OSTCBCur->computime > 0 )
         ; // Busywaiting 
-       end = OSTimeGet() ;
-       todelay = OSTCBCur->period - (end-start) ;
-       OSTCBCur->computime = 4 ; // task3的計算時間是4
-       if ( todelay < 0 ) {
-         sprintf(str, "Time Ticks:%d Task3 deadline!", OSTimeGet()) ;
-         PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-         count = count + 3 ;
-       } // if   
-       else {
-         sprintf(str, "Time Ticks:%d Task3 finish!", OSTimeGet()) ; 
-         PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-         count = count + 3 ;
-         OSTimeDly(todelay) ;
-       } // else       
+      end = OSTimeGet() ;
+      todelay = OSTCBCur->period - (end-start) ;
+      start = start + OSTCBCur->period ;
+      OSTCBCur->computime = 4 ; // task3的計算時間是4
+      if ( todelay < 0 ) {
+        OS_ENTER_CRITICAL();
+        printf("Task3 Deadline!\n") ;
+        OS_EXIT_CRITICAL();
+      } // if   
+      else {
+        //sprintf(str, "Time Ticks:%d Task3 finish!", OSTimeGet()) ; 
+        //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+        //count = count + 3 ;
+        OSTimeDly(todelay) ;
+      } // else       
       
     } // while 
 
