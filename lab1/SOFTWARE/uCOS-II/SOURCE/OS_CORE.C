@@ -186,6 +186,19 @@ void  OSIntExit (void)
             OSPrioHighRdy = (INT8U)((OSIntExitY << 3) + OSUnMapTbl[OSRdyTbl[OSIntExitY]]);
             if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy */
                 OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy];
+                
+                /* 尋找訊息佇列尾端 */
+                msgTemp = msgList;
+                while (msgTemp->next)
+                    msgTemp = msgTemp->next;
+                /* 增加一個節點到訊息佇列 */
+                msgTemp->next = (msg*)malloc(sizeof(msg));
+                msgTemp->next->tick = OSTimeGet();
+                msgTemp->next->event = 0;
+                msgTemp->next->fromTaskId = OSPrioCur;
+                msgTemp->next->toTaskId = OSPrioHighRdy;
+                msgTemp->next->next = (void*)0;
+                
                 OSCtxSwCtr++;                              /* Keep track of the number of ctx switches */
                 OSIntCtxSw();                              /* Perform interrupt level ctx switch       */
             }
@@ -300,6 +313,19 @@ void  OSStart (void)
         y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
         x             = OSUnMapTbl[OSRdyTbl[y]];
         OSPrioHighRdy = (INT8U)((y << 3) + x);
+
+        /* 尋找訊息佇列尾端 */
+        msgTemp = msgList;
+        while (msgTemp->next)
+            msgTemp = msgTemp->next;
+        /* 增加一個節點到訊息佇列 */
+        msgTemp->next = (msg*)malloc(sizeof(msg));
+        msgTemp->next->tick = OSTimeGet();
+        msgTemp->next->event = 1;
+        msgTemp->next->fromTaskId = OSPrioCur;
+        msgTemp->next->toTaskId = OSPrioHighRdy;
+        msgTemp->next->next = (void*)0;
+
         OSPrioCur     = OSPrioHighRdy;
         OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy]; /* Point to highest priority task ready to run    */
         OSTCBCur      = OSTCBHighRdy;
@@ -881,6 +907,22 @@ void  OS_Sched (void)
         OSPrioHighRdy = (INT8U)((y << 3) + OSUnMapTbl[OSRdyTbl[y]]);
         if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy     */
             OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
+            
+            /* 增加一個節點到訊息佇列 */
+                msgTemp = msgList;
+                while (msgTemp->next) {
+                    msgTemp = msgTemp->next;
+                    c++;
+                }
+                    
+                msgTemp->next = (msg*)malloc(sizeof(msg));
+                msgTemp->next->tick = OSTimeGet();
+                msgTemp->next->event = 1;
+                msgTemp->next->fromTaskId = OSPrioCur;
+                msgTemp->next->toTaskId = OSPrioHighRdy;
+                msgTemp->next->next = (msg*)0;
+            
+            
             OSCtxSwCtr++;                              /* Increment context switch counter             */
             OS_TASK_SW();                              /* Perform a context switch                     */
         }

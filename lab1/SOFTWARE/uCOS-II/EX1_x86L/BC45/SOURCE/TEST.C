@@ -40,6 +40,8 @@ OS_EVENT     *RandomSem;
         void  Task1(void *data);       /* Function prototypes of Startup task           */
         void  Task2();  
         void  Task3();
+        void  PrintMsg();
+        void  InitMsg();
 
 /*$PAGE*/
 /*
@@ -60,8 +62,11 @@ void  main (void)
     RandomSem   = OSSemCreate(1);                          /* Random number semaphore                  */
 
     OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
-    OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
-    OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
+    // OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
+    // OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
+    
+    InitMsg();
+
     OSStart();                                             /* Start multitasking                       */
 }
 
@@ -89,26 +94,40 @@ void  Task1 (void *pdata)
     PC_VectSet(0x08, OSTickISR);                           /* Install uC/OS-II's clock tick ISR        */
     PC_SetTickRate(OS_TICKS_PER_SEC);                      /* Reprogram tick rate                      */
     OS_EXIT_CRITICAL();
-    OSStatInit();                                          /* Initialize uC/OS-II's statistics         */
+    OSStatInit();  
+    
+    start = OSTimeGet() ;                                        /* Initialize uC/OS-II's statistics         */
     while(1) {
         if (PC_GetKey(&key) == TRUE) {                     /* See if key has been pressed              */
             if (key == 0x1B) {                             /* Yes, see if it's the ESCAPE key          */
                 PC_DOSReturn();                            /* Return to DOS                            */
             } // if 
         } // if 
-        start = OSTimeGet() ;
+        
         while( OSTCBCur->computime > 0 )
           ; // Busywaiting 
         end = OSTimeGet() ;
         todelay = OSTCBCur->period - (end-start) ;
+        start += OSTCBCur->period;
         OSTCBCur->computime = 1 ; // task1的計算時間是1
         if ( todelay < 0 ) {
-          PC_DispStr( 0, count, "task1 Deadline!", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+          // PC_DispStr( 0, count, "task1 Deadline!", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
           count = count + 3 ;
         } // if   
         else {
           sprintf(str, "Time Ticks:%d Task1 finish!", OSTimeGet()) ; 
-          PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+          //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+          
+          
+          
+          
+          OS_ENTER_CRITICAL();
+          PrintMsg();
+          OS_EXIT_CRITICAL();
+          
+          
+          
+          
           count = count + 3 ;
           OSTimeDly(todelay) ;
         } // else  
@@ -180,3 +199,33 @@ void  Task3() {
     } // while 
 
 } // Task2()
+
+void PrintMsg() {
+  //return;
+  while (msgList->next) {
+    /* 印出訊息佇列節點訊息 */
+    // char str[128];
+    // sprintf(str, "%d %s %d %d", msgList->next->tick,
+    //   (msgList->next->event ? "Complete" : "Preemt"),
+    //  msgList->next->fromTaskId,
+    //    msgList->next->toTaskId
+    //  ); 
+    // PC_DispStr( 0, 0, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+    printf("%d\t%s\t%d\t%d\n", 
+      msgList->next->tick,
+      (msgList->next->event ? "Complete" : "Preemt  "),
+      msgList->next->fromTaskId,
+      msgList->next->toTaskId
+    );
+    /* 將印過的節點刪掉 */
+    msgTemp = msgList;
+    msgList = msgList->next;
+    free(msgTemp);
+  }
+}
+
+void InitMsg() {
+  /* 新增dummy節點(簡化串列操作) */
+  msgList = (msg*)malloc(sizeof(msg));
+  msgList->next = (msg*)0;
+}

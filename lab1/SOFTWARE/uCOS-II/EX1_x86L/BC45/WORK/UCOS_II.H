@@ -419,6 +419,20 @@ typedef struct os_tcb {
 *********************************************************************************************************
 */
 
+/* self-defined variables */
+/* */
+typedef struct _msg {
+    int tick;           // 當前時間(tick)
+    int event;          // 事件(0=preemt, 1=complete)
+    int fromTaskId;     // 事件發生前 task ID
+    int toTaskId;       // 事件發生後 task ID
+    struct _msg *next;
+} msg;
+
+OS_EXT msg *msgList;
+OS_EXT msg* msgTemp;
+OS_EXT int c;
+
 OS_EXT  INT32U            OSCtxSwCtr;               /* Counter of number of context switches           */
 
 #if (OS_EVENT_EN > 0) && (OS_MAX_EVENTS > 0)
