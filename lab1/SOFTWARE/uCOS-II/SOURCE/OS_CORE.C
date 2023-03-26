@@ -912,8 +912,7 @@ void  OS_Sched (void)
                 msgTemp = msgList;
                 while (msgTemp->next) {
                     msgTemp = msgTemp->next;
-                    c++;
-                }
+                } // while
                     
                 msgTemp->next = (msg*)malloc(sizeof(msg));
                 msgTemp->next->tick = OSTimeGet();
