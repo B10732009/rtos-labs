@@ -1,205 +1,119 @@
-/*
-*********************************************************************************************************
-*                                                uC/OS-II
-*                                          The Real-Time Kernel
-*
-*                           (c) Copyright 1992-2002, Jean J. Labrosse, Weston, FL
-*                                           All Rights Reserved
-*
-*                                               EXAMPLE #1
-*********************************************************************************************************
-*/
-
 #include "includes.h"
 
-/*
-*********************************************************************************************************
-*                                               CONSTANTS
-*********************************************************************************************************
-*/
+// CONSTANTS
+#define TASK_STK_SIZE 512 // Size of each task's stacks (# of WORDs)
+#define N_TASKS 3 // Number of identical tasks
 
-#define  TASK_STK_SIZE                 512       /* Size of each task's stacks (# of WORDs)            */
-#define  N_TASKS                        3       /* Number of identical tasks                          */
+// VARIABLES
+OS_STK TaskStk[N_TASKS][TASK_STK_SIZE]; // Tasks stacks
+OS_STK TaskStartStk[TASK_STK_SIZE];
+char   TaskData[N_TASKS]; // Parameters to pass to each task
+OS_EVENT *RandomSem;
 
-/*
-*********************************************************************************************************
-*                                               VARIABLES
-*********************************************************************************************************
-*/
+// FUNCTION PROTOTYPES
+void BaseTask(int _taskId, int _computime, int _period, int _isPrint);
+void Task1(void *pdata); // Function prototypes of Startup task
+void Task2();  
+void Task3();
+void PrintMsg();
+void InitMsg();
 
-OS_STK        TaskStk[N_TASKS][TASK_STK_SIZE];        /* Tasks stacks                                  */
-OS_STK        TaskStartStk[TASK_STK_SIZE];
-char          TaskData[N_TASKS];                      /* Parameters to pass to each task               */
-OS_EVENT     *RandomSem;
-
-/*
-*********************************************************************************************************
-*                                           FUNCTION PROTOTYPES
-*********************************************************************************************************
-*/
-        void  Task1(void *data);       /* Function prototypes of Startup task           */
-        void  Task2();  
-        void  Task3();
-        void  PrintMsg();
-        void  InitMsg();
-
-/*$PAGE*/
-/*
-*********************************************************************************************************
-*                                                MAIN
-*********************************************************************************************************
-*/
-
-void  main (void)
-{
-    PC_DispClrScr(DISP_FGND_WHITE + DISP_BGND_BLACK);      /* Clear the screen                         */
-
-    OSInit();                                              /* Initialize uC/OS-II                      */
-
-    PC_DOSSaveReturn();                                    /* Save environment to return to DOS        */
-    PC_VectSet(uCOS, OSCtxSw);                             /* Install uC/OS-II's context switch vector */
-
-    RandomSem   = OSSemCreate(1);                          /* Random number semaphore                  */
-
-    OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
-    OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
-    OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
-    
-    InitMsg();
-
-    OSStart();                                             /* Start multitasking                       */
+// MAIN
+void main(void) {
+  // Initialize uC/OS-II
+  OSInit();
+  // Save environment to return to DOS
+  PC_DOSSaveReturn();
+  // Install uC/OS-II's context switch vector
+  PC_VectSet(uCOS, OSCtxSw);
+  // Random number semaphore
+  RandomSem = OSSemCreate(1);
+  // Create tasks
+  OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
+  OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
+  OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
+  // Initialize message list
+  InitMsg();
+  // Start multitasking
+  OSStart();
 }
 
-
-/*
-*********************************************************************************************************
-*                                              STARTUP TASK
-*********************************************************************************************************
-*/
-void  Task1 (void *pdata)
-{
-#if OS_CRITICAL_METHOD == 3                                /* Allocate storage for CPU status register */
-    OS_CPU_SR  cpu_sr;
-#endif
-    INT16S     key;
-    int start ;
-    int end ;
-    int todelay ;
-    int count = 1 ;
-    OSTCBCur->computime = 1 ;
-    OSTCBCur->period = 3 ;
-    pdata = pdata;                                         /* Prevent compiler warning                 */
-    OS_ENTER_CRITICAL();
-    PC_VectSet(0x08, OSTickISR);                           /* Install uC/OS-II's clock tick ISR        */
-    PC_SetTickRate(OS_TICKS_PER_SEC);                      /* Reprogram tick rate                      */
-    OS_EXIT_CRITICAL();
-    OSStatInit();  
+void BaseTask(int _taskId, int _computime, int _period, int _isPrint) {
+  INT16S key;
+  int start, end, toDelay;
+  OSTCBCur->computime = _computime;
+  OSTCBCur->period = _period;
     
-    start = OSTimeGet() ;                                        /* Initialize uC/OS-II's statistics         */
-    while(1) {
-        if (PC_GetKey(&key) == TRUE) {                     /* See if key has been pressed              */
-            if (key == 0x1B) {                             /* Yes, see if it's the ESCAPE key          */
-                PC_DOSReturn();                            /* Return to DOS                            */
-            } // if 
-        } // if 
+  // 取得開始時間
+  start = OSTimeGet();
+  while(1) {
+    // See if key has been pressed
+    if (PC_GetKey(&key) == TRUE) {                     
+      // Yes, see if it's the ESCAPE key
+      if (key == 0x1B) {
+        // Return to DOS
+        PC_DOSReturn();
+      }
+    }
         
-        while( OSTCBCur->computime > 0 )
-          ; // Busywaiting 
-        end = OSTimeGet() ;
-        todelay = OSTCBCur->period - (end-start) ;
-        start += OSTCBCur->period;
-        OSTCBCur->computime = 1 ; // task1的計算時間是1
-        if ( todelay < 0 ) {
-          OS_ENTER_CRITICAL();
-          printf("Task1 Deadline!\n") ;
-          OS_EXIT_CRITICAL();
-        } // if   
-        else {
-          //sprintf(str, "Time Ticks:%d Task1 finish!", OSTimeGet()) ; 
-          //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-          
-          
-          
-          
-          OS_ENTER_CRITICAL();
-          PrintMsg();
-          OS_EXIT_CRITICAL();
-          
-          
-          
-          
-          count = count + 3 ;
-          OSTimeDly(todelay) ;
-        } // else  
-    } // while
+    while(OSTCBCur->computime > 0)
+      ; // Busywaiting
+
+    // 取得結束時間
+    end = OSTimeGet();
+    // 計算完成時間與期望結束時間的差
+    toDelay = OSTCBCur->period - (end - start) ;
+    // 計算下一輪開始時間
+    start += OSTCBCur->period;
+    // 重製執行時間
+    OSTCBCur->computime = _computime;
+    // 檢查此task是否超時
+    if (toDelay < 0) { // 超時
+      OS_ENTER_CRITICAL();
+      printf("Task%d Deadline!\n", _taskId);
+      OS_EXIT_CRITICAL();
+    }
+    else { // 未超時
+      if (_isPrint) {
+        OS_ENTER_CRITICAL();
+        PrintMsg();
+        OS_EXIT_CRITICAL();
+      }
+      OSTimeDly(toDelay);
+    } 
+  }
 }
-/*
-*********************************************************************************************************
-*                                                  TASKS
-*********************************************************************************************************
-*/
 
-void  Task2() {
-    int start ;
-    int end ;
-    int todelay ;
-    int count = 2 ;
-    OSTCBCur->computime = 3 ;
-    OSTCBCur->period = 6 ;
-    start = OSTimeGet() ;
-    while(1) {
-      while( OSTCBCur->computime > 0 )
-        ; // Busywaiting 
-      end = OSTimeGet() ;
-      todelay = OSTCBCur->period - (end-start) ;
-      start = start + OSTCBCur->period ; 
-      OSTCBCur->computime = 3 ; // task2的計算時間是3
-      if ( todelay < 0 ) {
-        OS_ENTER_CRITICAL();
-        printf("Task2 Deadline!\n") ;
-        OS_EXIT_CRITICAL();
-      } // if   
-      else {
-        //sprintf(str, "Time Ticks:%d Task2 finish!", OSTimeGet()) ; 
-        //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-        //count = count + 3 ;
-        OSTimeDly(todelay) ;
-      } // else       
-      
-    } // while 
+// Task1 (STARTUP TASK)
+void Task1(void *pdata) {
+  // Allocate storage for CPU status register
+#if OS_CRITICAL_METHOD == 3
+  OS_CPU_SR  cpu_sr;
+#endif
+  // Prevent compiler warning
+  pdata = pdata;
 
-} // Task2()
+  OS_ENTER_CRITICAL();
+  // Install uC/OS-II's clock tick ISR
+  PC_VectSet(0x08, OSTickISR);
+  // Reprogram tick rate
+  PC_SetTickRate(OS_TICKS_PER_SEC);
+  OS_EXIT_CRITICAL();
+  // Initialize uC/OS-II's statistics
+  OSStatInit();
 
-void  Task3() {
-    int start ;
-    int end ;
-    int todelay ;
-    int count = 3 ;
-    OSTCBCur->computime = 4 ;
-    OSTCBCur->period = 9 ;
-    start = OSTimeGet() ;
-    while(1) {
-      while( OSTCBCur->computime > 0 )
-        ; // Busywaiting 
-      end = OSTimeGet() ;
-      todelay = OSTCBCur->period - (end-start) ;
-      start = start + OSTCBCur->period ;
-      OSTCBCur->computime = 4 ; // task3的計算時間是4
-      if ( todelay < 0 ) {
-        OS_ENTER_CRITICAL();
-        printf("Task3 Deadline!\n") ;
-        OS_EXIT_CRITICAL();
-      } // if   
-      else {
-        //sprintf(str, "Time Ticks:%d Task3 finish!", OSTimeGet()) ; 
-        //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-        //count = count + 3 ;
-        OSTimeDly(todelay) ;
-      } // else       
-      
-    } // while 
+  BaseTask(1, 1, 3, 1);
+}
 
-} // Task2()
+// Task2
+void Task2() {
+  BaseTask(2, 3, 6, 0);
+}
+
+// Task3
+void Task3() {
+  BaseTask(3, 4, 9, 0);
+}
 
 void PrintMsg() {
   //return;
