@@ -420,7 +420,6 @@ typedef struct os_tcb {
 */
 
 /* self-defined variables */
-/* */
 typedef struct _msg {
     int tick;           // 當前時間(tick)
     int event;          // 事件(0=preemt, 1=complete)
@@ -429,9 +428,8 @@ typedef struct _msg {
     struct _msg *next;
 } msg;
 
-OS_EXT msg *msgList;
-OS_EXT msg* msgTemp;
-OS_EXT int c;
+OS_EXT msg *msgList;    // 訊息佇列 (linked list)
+OS_EXT msg* msgTemp;    // 訊息佇列暫存變數
 
 OS_EXT  INT32U            OSCtxSwCtr;               /* Counter of number of context switches           */
 

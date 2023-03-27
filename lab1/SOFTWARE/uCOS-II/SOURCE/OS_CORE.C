@@ -68,6 +68,9 @@ static  void  OS_InitTaskIdle(void);
 static  void  OS_InitTaskStat(void);
 static  void  OS_InitTCBList(void);
 
+/* self-defined functions */
+static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId);
+
 /*$PAGE*/
 /*
 *********************************************************************************************************
@@ -186,18 +189,9 @@ void  OSIntExit (void)
             OSPrioHighRdy = (INT8U)((OSIntExitY << 3) + OSUnMapTbl[OSRdyTbl[OSIntExitY]]);
             if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy */
                 OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy];
-                
-                /* 尋找訊息佇列尾端 */
-                msgTemp = msgList;
-                while (msgTemp->next)
-                    msgTemp = msgTemp->next;
-                /* 增加一個節點到訊息佇列 */
-                msgTemp->next = (msg*)malloc(sizeof(msg));
-                msgTemp->next->tick = OSTimeGet();
-                msgTemp->next->event = 0;
-                msgTemp->next->fromTaskId = OSPrioCur;
-                msgTemp->next->toTaskId = OSPrioHighRdy;
-                msgTemp->next->next = (void*)0;
+
+                /* 增加一筆preempt訊息到訊息佇列 */
+                AddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
                 
                 OSCtxSwCtr++;                              /* Keep track of the number of ctx switches */
                 OSIntCtxSw();                              /* Perform interrupt level ctx switch       */
@@ -313,19 +307,6 @@ void  OSStart (void)
         y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
         x             = OSUnMapTbl[OSRdyTbl[y]];
         OSPrioHighRdy = (INT8U)((y << 3) + x);
-
-        // /* 尋找訊息佇列尾端 */
-        // msgTemp = msgList;
-        // while (msgTemp->next)
-        //     msgTemp = msgTemp->next;
-        // /* 增加一個節點到訊息佇列 */
-        // msgTemp->next = (msg*)malloc(sizeof(msg));
-        // msgTemp->next->tick = OSTimeGet();
-        // msgTemp->next->event = 1;
-        // msgTemp->next->fromTaskId = OSPrioCur;
-        // msgTemp->next->toTaskId = OSPrioHighRdy;
-        // msgTemp->next->next = (void*)0;
-
         OSPrioCur     = OSPrioHighRdy;
         OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy]; /* Point to highest priority task ready to run    */
         OSTCBCur      = OSTCBHighRdy;
@@ -908,19 +889,8 @@ void  OS_Sched (void)
         if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy     */
             OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
             
-            /* 增加一個節點到訊息佇列 */
-                msgTemp = msgList;
-                while (msgTemp->next) {
-                    msgTemp = msgTemp->next;
-                } // while
-                    
-                msgTemp->next = (msg*)malloc(sizeof(msg));
-                msgTemp->next->tick = OSTimeGet();
-                msgTemp->next->event = 1;
-                msgTemp->next->fromTaskId = OSPrioCur;
-                msgTemp->next->toTaskId = OSPrioHighRdy;
-                msgTemp->next->next = (msg*)0;
-            
+            /* 增加一筆complete訊息到訊息佇列 */
+            AddMsgList(OSTimeGet(), 1, OSPrioCur, OSPrioHighRdy);
             
             OSCtxSwCtr++;                              /* Increment context switch counter             */
             OS_TASK_SW();                              /* Perform a context switch                     */
@@ -1148,4 +1118,19 @@ INT8U  OS_TCBInit (INT8U prio, OS_STK *ptos, OS_STK *pbos, INT16U id, INT32U stk
     }
     OS_EXIT_CRITICAL();
     return (OS_NO_MORE_TCB);
+}
+
+/* self-defined functions */
+static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) {
+    /* 尋找訊息佇列尾端 */
+    msgTemp = msgList;
+    while (msgTemp->next)
+        msgTemp = msgTemp->next;
+    /* 增加一個節點到訊息佇列 */
+    msgTemp->next = (msg*)malloc(sizeof(msg));
+    msgTemp->next->tick = _tick;
+    msgTemp->next->event = _event;
+    msgTemp->next->fromTaskId = _fromTaskId;
+    msgTemp->next->toTaskId = _toTaskId;
+    msgTemp->next->next = (msg*)0;
 }

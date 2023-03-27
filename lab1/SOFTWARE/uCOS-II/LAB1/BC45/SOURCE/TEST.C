@@ -15,8 +15,8 @@ void BaseTask(int _taskId, int _computime, int _period, int _isPrint);
 void Task1(void *pdata); // Function prototypes of Startup task
 void Task2();  
 void Task3();
-void PrintMsg();
-void InitMsg();
+void PrintMsgList();
+void InitMsgList();
 
 // MAIN
 void main(void) {
@@ -33,7 +33,7 @@ void main(void) {
   OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
   OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
   // Initialize message list
-  InitMsg();
+  InitMsgList();
   // Start multitasking
   OSStart();
 }
@@ -76,7 +76,7 @@ void BaseTask(int _taskId, int _computime, int _period, int _isPrint) {
     else { // 未超時
       if (_isPrint) {
         OS_ENTER_CRITICAL();
-        PrintMsg();
+        PrintMsgList();
         OS_EXIT_CRITICAL();
       }
       OSTimeDly(toDelay);
@@ -115,32 +115,24 @@ void Task3() {
   BaseTask(3, 4, 9, 0);
 }
 
-void PrintMsg() {
-  //return;
+void PrintMsgList() {
   while (msgList->next) {
-    /* 印出訊息佇列節點訊息 */
-    // char str[128];
-    // sprintf(str, "%d %s %d %d", msgList->next->tick,
-    //   (msgList->next->event ? "Complete" : "Preemt"),
-    //  msgList->next->fromTaskId,
-    //    msgList->next->toTaskId
-    //  ); 
-    // PC_DispStr( 0, 0, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+    // 印出訊息佇列節點訊息
     printf("%d\t%s\t%d\t%d\n", 
       msgList->next->tick,
       (msgList->next->event ? "Complete" : "Preemt  "),
       msgList->next->fromTaskId,
       msgList->next->toTaskId
     );
-    /* 將印過的節點刪掉 */
+    // 將印過的節點刪掉
     msgTemp = msgList;
     msgList = msgList->next;
     free(msgTemp);
   }
 }
 
-void InitMsg() {
-  /* 新增dummy節點(簡化串列操作) */
+void InitMsgList() {
+  // 新增dummy節點(簡化串列操作)
   msgList = (msg*)malloc(sizeof(msg));
   msgList->next = (msg*)0;
 }
