@@ -19,7 +19,7 @@
 */
 
 #define  TASK_STK_SIZE                 512       /* Size of each task's stacks (# of WORDs)            */
-#define  N_TASKS                        3       /* Number of identical tasks                          */
+#define  N_TASKS                       3        /* Number of identical tasks                          */
 
 /*
 *********************************************************************************************************
@@ -28,20 +28,20 @@
 */
 
 OS_STK        TaskStk[N_TASKS][TASK_STK_SIZE];        /* Tasks stacks                                  */
-OS_STK        TaskStartStk[TASK_STK_SIZE];
-char          TaskData[N_TASKS];                      /* Parameters to pass to each task               */
-OS_EVENT     *RandomSem;
+OS_TCB        *ptcb;
+int             i;
 
 /*
 *********************************************************************************************************
 *                                           FUNCTION PROTOTYPES
 *********************************************************************************************************
 */
-        void  Task1(void *data);       /* Function prototypes of Startup task           */
-        void  Task2();  
-        void  Task3();
-        void  PrintMsg();
-        void  InitMsg();
+
+        void  Task1(void *data); 
+        void  Task2(void *data);                      /* Function prototypes of tasks                  */
+        void  Task3(void *data);
+        void  Print(void);
+        void  ArgumentSet(void);
 
 /*$PAGE*/
 /*
@@ -59,174 +59,171 @@ void  main (void)
     PC_DOSSaveReturn();                                    /* Save environment to return to DOS        */
     PC_VectSet(uCOS, OSCtxSw);                             /* Install uC/OS-II's context switch vector */
 
-    RandomSem   = OSSemCreate(1);                          /* Random number semaphore                  */
-
-    OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
-    OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
-    OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
-    
-    InitMsg();
+    OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE - 1], 1);
+    OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE - 1], 2);
+    OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE - 1], 3); 
+    ArgumentSet(); 
 
     OSStart();                                             /* Start multitasking                       */
 }
-
-
-/*
-*********************************************************************************************************
-*                                              STARTUP TASK
-*********************************************************************************************************
-*/
-void  Task1 (void *pdata)
-{
-#if OS_CRITICAL_METHOD == 3                                /* Allocate storage for CPU status register */
-    OS_CPU_SR  cpu_sr;
-#endif
-    INT16S     key;
-    int start ;
-    int end ;
-    int todelay ;
-    int count = 1 ;
-    OSTCBCur->computime = 1 ;
-    OSTCBCur->period = 3 ;
-    pdata = pdata;                                         /* Prevent compiler warning                 */
-    OS_ENTER_CRITICAL();
-    PC_VectSet(0x08, OSTickISR);                           /* Install uC/OS-II's clock tick ISR        */
-    PC_SetTickRate(OS_TICKS_PER_SEC);                      /* Reprogram tick rate                      */
-    OS_EXIT_CRITICAL();
-    OSStatInit();  
-    
-    start = OSTimeGet() ;                                        /* Initialize uC/OS-II's statistics         */
-    while(1) {
-        if (PC_GetKey(&key) == TRUE) {                     /* See if key has been pressed              */
-            if (key == 0x1B) {                             /* Yes, see if it's the ESCAPE key          */
-                PC_DOSReturn();                            /* Return to DOS                            */
-            } // if 
-        } // if 
-        
-        while( OSTCBCur->computime > 0 )
-          ; // Busywaiting 
-        end = OSTimeGet() ;
-        todelay = OSTCBCur->period - (end-start) ;
-        start += OSTCBCur->period;
-        OSTCBCur->computime = 1 ; // task1的計算時間是1
-        if ( todelay < 0 ) {
-          OS_ENTER_CRITICAL();
-          printf("Task1 Deadline!\n") ;
-          OS_EXIT_CRITICAL();
-        } // if   
-        else {
-          //sprintf(str, "Time Ticks:%d Task1 finish!", OSTimeGet()) ; 
-          //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-          
-          
-          
-          
-          OS_ENTER_CRITICAL();
-          PrintMsg();
-          OS_EXIT_CRITICAL();
-          
-          
-          
-          
-          count = count + 3 ;
-          OSTimeDly(todelay) ;
-        } // else  
-    } // while
-}
+/*$PAGE*/
 /*
 *********************************************************************************************************
 *                                                  TASKS
 *********************************************************************************************************
 */
 
-void  Task2() {
-    int start ;
-    int end ;
-    int todelay ;
-    int count = 2 ;
-    OSTCBCur->computime = 3 ;
-    OSTCBCur->period = 6 ;
-    start = OSTimeGet() ;
-    while(1) {
-      while( OSTCBCur->computime > 0 )
-        ; // Busywaiting 
-      end = OSTimeGet() ;
-      todelay = OSTCBCur->period - (end-start) ;
-      start = start + OSTCBCur->period ; 
-      OSTCBCur->computime = 3 ; // task2的計算時間是3
-      if ( todelay < 0 ) {
+void  Task1 (void *pdata)
+{
+#if OS_CRITICAL_METHOD == 3                                /* Allocate storage for CPU status register */
+    OS_CPU_SR  cpu_sr;
+#endif
+
+    INT16S     key;
+    int start;      /*the start time    */
+    int end;        /*the end time      */
+    int arrive;     /*  arrive time   */
+    int toDelay;
+    pdata = pdata;
+    arrive = 0;
+
+    OS_ENTER_CRITICAL();
+    PC_VectSet(0x08, OSTickISR);                           /* Install uC/OS-II's clock tick ISR        */
+    PC_SetTickRate(1u);                      /* Reprogram tick rate                      */
+    OS_EXIT_CRITICAL();
+
+    while(1){
+        if (PC_GetKey(&key) == TRUE) {                     /* See if key has been pressed              */
+            if (key == 0x1B) {                             /* Yes, see if it's the ESCAPE key          */
+                PC_DOSReturn();                            /* Return to DOS                            */
+            }
+        }
         OS_ENTER_CRITICAL();
-        printf("Task2 Deadline!\n") ;
+        Print();
         OS_EXIT_CRITICAL();
-      } // if   
-      else {
-        //sprintf(str, "Time Ticks:%d Task2 finish!", OSTimeGet()) ; 
-        //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-        //count = count + 3 ;
-        OSTimeDly(todelay) ;
-      } // else       
-      
-    } // while 
 
-} // Task2()
+        start = OSTimeGet();
+        while(OSTCBCur->compTime>0){}
 
-void  Task3() {
-    int start ;
-    int end ;
-    int todelay ;
-    int count = 3 ;
-    OSTCBCur->computime = 4 ;
-    OSTCBCur->period = 9 ;
-    start = OSTimeGet() ;
-    while(1) {
-      while( OSTCBCur->computime > 0 )
-        ; // Busywaiting 
-      end = OSTimeGet() ;
-      todelay = OSTCBCur->period - (end-start) ;
-      start = start + OSTCBCur->period ;
-      OSTCBCur->computime = 4 ; // task3的計算時間是4
-      if ( todelay < 0 ) {
         OS_ENTER_CRITICAL();
-        printf("Task3 Deadline!\n") ;
+        end = OSTimeGet();
+        toDelay = (OSTCBCur->period) - (end-arrive);
+        arrive += OSTCBCur->period;
+
+        OSTCBCur->compTime = 1;
+
+        if(toDelay<0)
+            printf("Task1 deadline\n");
+        else
+            OSTimeDly(toDelay);
         OS_EXIT_CRITICAL();
-      } // if   
-      else {
-        //sprintf(str, "Time Ticks:%d Task3 finish!", OSTimeGet()) ; 
-        //PC_DispStr( 0, count, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-        //count = count + 3 ;
-        OSTimeDly(todelay) ;
-      } // else       
-      
-    } // while 
-
-} // Task2()
-
-void PrintMsg() {
-  //return;
-  while (msgList->next) {
-    /* 印出訊息佇列節點訊息 */
-    // char str[128];
-    // sprintf(str, "%d %s %d %d", msgList->next->tick,
-    //   (msgList->next->event ? "Complete" : "Preemt"),
-    //  msgList->next->fromTaskId,
-    //    msgList->next->toTaskId
-    //  ); 
-    // PC_DispStr( 0, 0, str, DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-    printf("%d\t%s\t%d\t%d\n", 
-      msgList->next->tick,
-      (msgList->next->event ? "Complete" : "Preemt  "),
-      msgList->next->fromTaskId,
-      msgList->next->toTaskId
-    );
-    /* 將印過的節點刪掉 */
-    msgTemp = msgList;
-    msgList = msgList->next;
-    free(msgTemp);
-  }
+    }
 }
+void  Task2 (void *pdata)
+{
+    int start;      /*  start time      */
+    int end;        /*  end time        */
+    int arrive;     /*  arrive time     */
+    int toDelay;
+    pdata = pdata;
+    arrive = 0;
+    while(1){
+        // Print();
 
-void InitMsg() {
-  /* 新增dummy節點(簡化串列操作) */
-  msgList = (msg*)malloc(sizeof(msg));
-  msgList->next = (msg*)0;
+        start = OSTimeGet();
+        while(OSTCBCur->compTime>0){}
+
+        OS_ENTER_CRITICAL();
+        end = OSTimeGet();
+        toDelay = (OSTCBCur->period) - (end-arrive);
+        arrive += OSTCBCur->period;
+
+        OSTCBCur->compTime = 3;
+
+        if(toDelay<0)
+            printf("Task2 deadline\n");
+        else
+            OSTimeDly(toDelay);
+        OS_EXIT_CRITICAL();
+    }
+}
+void  Task3 (void *pdata)
+{
+    int start;      /*  start time      */
+    int end;        /*  end time        */
+    int arrive;     /*  arrive time     */
+    int toDelay;
+    pdata = pdata;
+    arrive = 0;
+    while(1){
+        // Print();
+
+        start = OSTimeGet();
+        while(OSTCBCur->compTime>0){}
+
+        OS_ENTER_CRITICAL();
+        end = OSTimeGet();
+        toDelay = (OSTCBCur->period) - (end-arrive);
+        arrive += OSTCBCur->period;
+
+        OSTCBCur->compTime = 3;
+
+        if(toDelay<0)
+            printf("Task3 deadline\n");
+        else
+            OSTimeDly(toDelay);
+        OS_EXIT_CRITICAL();
+    }
+}
+void Print(void){
+    if(print_pos<pos){
+        for(i=print_pos; i<pos; i++){
+            printf("%d\t", buf[i][0]);
+            if(buf[i][1]==0)    printf("Preempt\t");
+            else                printf("Complete\t");
+            printf("%d\t%d\n", buf[i][2], buf[i][3]);
+        }
+    }
+    else{
+        for(i=print_pos; i<row_size; i++){
+            printf("%d\t", buf[i][0]);
+            if(buf[i][1]==0)    printf("Preempt\t");
+            else                printf("Complete\t");
+            printf("%d\t%d\n", buf[i][2], buf[i][3]);
+        }
+        for(i=0; i<pos; i++){
+            printf("%d\t", buf[i][0]);
+            if(buf[i][1]==0)    printf("Preempt\t");
+            else                printf("Complete\t");
+            printf("%d\t%d\n", buf[i][2], buf[i][3]);
+        }
+    }
+    print_pos = pos;
+}
+void ArgumentSet(void){
+    ptcb = OSTCBList;
+    while(ptcb->OSTCBPrio==1 || ptcb->OSTCBPrio==2 || ptcb->OSTCBPrio==3){
+        // printf("Priority: %d set argument\n", ptcb->OSTCBPrio);
+        if(ptcb->OSTCBPrio==1){
+            ptcb->compTime = 1;
+            ptcb->period = 3;
+        }
+        else if(ptcb->OSTCBPrio==2){
+            ptcb->compTime = 3;
+            ptcb->period = 6;
+        }
+        else if(ptcb->OSTCBPrio==3){
+            ptcb->compTime = 4;
+            ptcb->period = 9;
+        }
+        ptcb = ptcb->OSTCBNext;
+    }
+
+    row_size = 5;
+    col_size = 4;
+    pos = 0;
+    print_pos = 0;
+    buf = (int**)malloc(sizeof(int*)*row_size);
+    for(i=0; i<row_size; i++)
+        buf[i] = (int*)malloc(sizeof(int)*col_size);
 }

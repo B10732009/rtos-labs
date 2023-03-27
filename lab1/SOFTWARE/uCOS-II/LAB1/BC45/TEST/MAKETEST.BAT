@@ -21,3 +21,4 @@ CD    ..\WORK
 COPY  ..\TEST\TEST.MAK   TEST.MAK
 C:\BC45\BIN\MAKE -f TEST.MAK
 CD    ..\TEST
+TEST.EXE > answer.txt
