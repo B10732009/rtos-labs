@@ -40,11 +40,11 @@ void main(void) {
 
 void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
   INT16S key;
-  int start, end, toDelay;
+  int start, end, toDelay, deadline;
   OSTCBCur->computeTime = _computeTime;
   OSTCBCur->period = _period;
+  deadline = _period;
     
-  
   while (1) {
     // See if key has been pressed
     if (PC_GetKey(&key) == TRUE) {                     
@@ -71,7 +71,7 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
     // 檢查此task是否超時
     if (toDelay < 0) { // 超時
       OS_ENTER_CRITICAL();
-      printf("Task%d Deadline!\n", _taskId);
+      printf("%d\tTask%d Deadline!\n", deadline, _taskId);
       OS_EXIT_CRITICAL();
     }
     else { // 未超時
@@ -81,7 +81,9 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
         OS_EXIT_CRITICAL();
       }
       OSTimeDly(toDelay);
-    } 
+    }
+    // 將deadline增加至下一周期
+    deadline += _period;
   }
 }
 
@@ -102,9 +104,10 @@ void Task1(void *pdata) {
   OS_EXIT_CRITICAL();
   
   // Initialize uC/OS-II's statistics
+  // OSStatInit函數似乎會造成tick計算異常，因此選擇註解掉
   // OSStatInit();
   
-  
+  // 在做完start up task所需額外做的事之後，將tick歸零  
   OSTimeSet(0);
   BaseTask(1, 1, 3, 1);
 }

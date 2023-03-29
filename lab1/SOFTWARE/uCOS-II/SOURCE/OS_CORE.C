@@ -308,10 +308,8 @@ void  OSStart (void)
         x             = OSUnMapTbl[OSRdyTbl[y]];
         OSPrioHighRdy = (INT8U)((y << 3) + x);
         
-        OSTimeSet(0);
         /* 增加一筆complete訊息到訊息佇列 */
-        AddMsgList(0, 0, OSPrioCur, OSPrioHighRdy);
-        // OSTimeSet(1);
+        AddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
         
         OSPrioCur     = OSPrioHighRdy;
         OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy]; /* Point to highest priority task ready to run    */
