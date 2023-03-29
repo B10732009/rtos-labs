@@ -11,7 +11,7 @@ char   TaskData[N_TASKS]; // Parameters to pass to each task
 OS_EVENT *RandomSem;
 
 // FUNCTION PROTOTYPES
-void BaseTask(int _taskId, int _computime, int _period, int _isPrint);
+void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint);
 void Task1(void *pdata); // Function prototypes of Startup task
 void Task2();  
 void Task3();
@@ -38,15 +38,14 @@ void main(void) {
   OSStart();
 }
 
-void BaseTask(int _taskId, int _computime, int _period, int _isPrint) {
+void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
   INT16S key;
   int start, end, toDelay;
-  OSTCBCur->computime = _computime;
+  OSTCBCur->computeTime = _computeTime;
   OSTCBCur->period = _period;
     
-  // 取得開始時間
-  start = OSTimeGet();
-  while(1) {
+  
+  while (1) {
     // See if key has been pressed
     if (PC_GetKey(&key) == TRUE) {                     
       // Yes, see if it's the ESCAPE key
@@ -55,18 +54,20 @@ void BaseTask(int _taskId, int _computime, int _period, int _isPrint) {
         PC_DOSReturn();
       }
     }
-        
-    while(OSTCBCur->computime > 0)
-      ; // Busywaiting
 
+    // 取得開始時間
+    start = OSTimeGet();
+    // 等待task執行結束
+    while (OSTCBCur->computeTime > 0)
+      ; // Busywaiting
     // 取得結束時間
     end = OSTimeGet();
-    // 計算完成時間與期望結束時間的差
-    toDelay = OSTCBCur->period - (end - start) ;
+    // 計算完成時間與期望時間的差 -> 期望花的時間:period, 實際花的時間:end-start 
+    toDelay = OSTCBCur->period - (end - start);
     // 計算下一輪開始時間
     start += OSTCBCur->period;
     // 重製執行時間
-    OSTCBCur->computime = _computime;
+    OSTCBCur->computeTime = _computeTime;
     // 檢查此task是否超時
     if (toDelay < 0) { // 超時
       OS_ENTER_CRITICAL();
@@ -99,9 +100,12 @@ void Task1(void *pdata) {
   // Reprogram tick rate
   PC_SetTickRate(OS_TICKS_PER_SEC);
   OS_EXIT_CRITICAL();
+  
   // Initialize uC/OS-II's statistics
-  OSStatInit();
-
+  // OSStatInit();
+  
+  
+  OSTimeSet(0);
   BaseTask(1, 1, 3, 1);
 }
 

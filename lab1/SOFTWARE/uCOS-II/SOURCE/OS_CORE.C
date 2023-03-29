@@ -307,6 +307,12 @@ void  OSStart (void)
         y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
         x             = OSUnMapTbl[OSRdyTbl[y]];
         OSPrioHighRdy = (INT8U)((y << 3) + x);
+        
+        OSTimeSet(0);
+        /* 增加一筆complete訊息到訊息佇列 */
+        AddMsgList(0, 0, OSPrioCur, OSPrioHighRdy);
+        // OSTimeSet(1);
+        
         OSPrioCur     = OSPrioHighRdy;
         OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy]; /* Point to highest priority task ready to run    */
         OSTCBCur      = OSTCBHighRdy;
@@ -400,7 +406,9 @@ void  OSTimeTick (void)
             OS_EXIT_CRITICAL();
         }
     }
-    OSTCBCur->computime = OSTCBCur->computime - 1 ; // henry modified
+
+    // 當前執行task的執行時間扣掉1個tick
+    (OSTCBCur->computeTime)--; // henry modified
 }
 /*$PAGE*/
 /*
