@@ -1,0 +1,8 @@
+DEL *.TXT
+DEL *.EXE
+DEL *.MAP
+CD ..\OBJ
+DEL *.*
+CD ..\WORK
+DEL *.*
+CD ..\TEST
