@@ -1166,7 +1166,7 @@ static  INT8U  EDFprioSelector() { // yuchen modified
           // 確認該task是在ready狀態
           if (ptcb->OSTCBDly == 0) {
               // test
-              if (ptcb->deadline <= closest_deadline ) {
+              if (ptcb->deadline < closest_deadline ) {
                   closest_deadline = ptcb->deadline ;
                   highestPrio = ptcb->OSTCBPrio;
               } // 修改成比較deadline // henry modified     
