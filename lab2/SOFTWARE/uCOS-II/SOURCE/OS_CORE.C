@@ -70,6 +70,7 @@ static  void  OS_InitTCBList(void);
 
 /* self-defined functions */
 static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId);
+static  INT8U  EDFprioSelector(); // yuchen modified
 
 /*$PAGE*/
 /*
@@ -185,8 +186,12 @@ void  OSIntExit (void)
             OSIntNesting--;
         }
         if ((OSIntNesting == 0) && (OSLockNesting == 0)) { /* Reschedule only if all ISRs complete ... */
-            OSIntExitY    = OSUnMapTbl[OSRdyGrp];          /* ... and not locked.                      */
-            OSPrioHighRdy = (INT8U)((OSIntExitY << 3) + OSUnMapTbl[OSRdyTbl[OSIntExitY]]);
+            
+            // OSIntExitY    = OSUnMapTbl[OSRdyGrp];          /* ... and not locked.                      */
+            // OSPrioHighRdy = (INT8U)((OSIntExitY << 3) + OSUnMapTbl[OSRdyTbl[OSIntExitY]]);
+
+            OSPrioHighRdy = EDFprioSelector(); // yuchen modified
+
             if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy */
                 OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy];
 
@@ -304,9 +309,12 @@ void  OSStart (void)
 
 
     if (OSRunning == FALSE) {
-        y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
-        x             = OSUnMapTbl[OSRdyTbl[y]];
-        OSPrioHighRdy = (INT8U)((y << 3) + x);
+        
+        // y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
+        // x             = OSUnMapTbl[OSRdyTbl[y]];
+        // OSPrioHighRdy = (INT8U)((y << 3) + x);
+
+        OSPrioHighRdy = EDFprioSelector(); // yuchen modified
         
         /* 增加一筆complete訊息到訊息佇列 */
         AddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
@@ -890,8 +898,12 @@ void  OS_Sched (void)
 
     OS_ENTER_CRITICAL();
     if ((OSIntNesting == 0) && (OSLockNesting == 0)) { /* Sched. only if all ISRs done & not locked    */
-        y             = OSUnMapTbl[OSRdyGrp];          /* Get pointer to HPT ready to run              */
-        OSPrioHighRdy = (INT8U)((y << 3) + OSUnMapTbl[OSRdyTbl[y]]);
+        
+        // y             = OSUnMapTbl[OSRdyGrp];          /* Get pointer to HPT ready to run              */
+        // OSPrioHighRdy = (INT8U)((y << 3) + OSUnMapTbl[OSRdyTbl[y]]);
+        
+        OSPrioHighRdy = EDFprioSelector(); // yuchen modified
+        
         if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy     */
             OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
             
@@ -1139,4 +1151,20 @@ static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) 
     msgTemp->next->fromTaskId = _fromTaskId;
     msgTemp->next->toTaskId = _toTaskId;
     msgTemp->next->next = (msg*)0;
+}
+
+static  INT8U  EDFprioSelector() { // yuchen modified
+    INT8U highestPrio = OS_IDLE_PRIO;
+    OS_TCB *ptcb;
+    // 走訪TCB列表
+    for (ptcb = OSTCBList; ptcb->OSTCBPrio != OS_IDLE_PRIO; ptcb = ptcb->OSTCBNext) {
+        // 確認該task是在ready狀態
+        if (ptcb->OSTCBStat == OS_STAT_RDY && ptcb->OSTCBDly == 0) {
+            // test
+            if (ptcb->OSTCBPrio < highestPrio)
+                highestPrio = ptcb->OSTCBPrio;
+        }
+    }
+
+    return highestPrio;
 }
