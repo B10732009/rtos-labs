@@ -310,11 +310,11 @@ void  OSStart (void)
 
     if (OSRunning == FALSE) {
         
-        // y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
-        // x             = OSUnMapTbl[OSRdyTbl[y]];
-        // OSPrioHighRdy = (INT8U)((y << 3) + x);
+        y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
+        x             = OSUnMapTbl[OSRdyTbl[y]];
+        OSPrioHighRdy = (INT8U)((y << 3) + x);
 
-        OSPrioHighRdy = EDFprioSelector(); // yuchen modified
+        //OSPrioHighRdy = EDFprioSelector(); // yuchen modified
         
         /* 增加一筆complete訊息到訊息佇列 */
         AddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
@@ -401,6 +401,7 @@ void  OSTimeTick (void)
             if (ptcb->OSTCBDly != 0) {                     /* Delayed or waiting for event with TO     */
                 if (--ptcb->OSTCBDly == 0) {               /* Decrement nbr of ticks to end of delay   */
                     if ((ptcb->OSTCBStat & OS_STAT_SUSPEND) == OS_STAT_RDY) { /* Is task suspended?    */
+                        //ptcb->deadline = ptcb->deadline + ptcb->period ; // 更新deadline // henry modified
                         OSRdyGrp               |= ptcb->OSTCBBitY; /* No,  Make task R-to-R (timed out)*/
                         OSRdyTbl[ptcb->OSTCBY] |= ptcb->OSTCBBitX;
                     } else {                               /* Yes, Leave 1 tick to prevent ...         */
@@ -1079,7 +1080,7 @@ INT8U  OS_TCBInit (INT8U prio, OS_STK *ptos, OS_STK *pbos, INT16U id, INT32U stk
         ptcb->OSTCBPrio      = (INT8U)prio;                /* Load task priority into TCB              */
         ptcb->OSTCBStat      = OS_STAT_RDY;                /* Task is ready to run                     */
         ptcb->OSTCBDly       = 0;                          /* Task is not delayed                      */
-
+        ptcb->deadline       = 64;                       // 初始化deadline // henry modified
 #if OS_TASK_CREATE_EXT_EN > 0
         ptcb->OSTCBExtPtr    = pext;                       /* Store pointer to TCB extension           */
         ptcb->OSTCBStkSize   = stk_size;                   /* Store stack size                         */
@@ -1155,16 +1156,23 @@ static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) 
 
 static  INT8U  EDFprioSelector() { // yuchen modified
     INT8U highestPrio = OS_IDLE_PRIO;
+    int closest_deadline = 1000 ; // 距離最近的deadline, 1000只是隨便給予的初始值 // henry modified
     OS_TCB *ptcb;
     // 走訪TCB列表
-    for (ptcb = OSTCBList; ptcb->OSTCBPrio != OS_IDLE_PRIO; ptcb = ptcb->OSTCBNext) {
-        // 確認該task是在ready狀態
-        if (ptcb->OSTCBStat == OS_STAT_RDY && ptcb->OSTCBDly == 0) {
-            // test
-            if (ptcb->OSTCBPrio < highestPrio)
-                highestPrio = ptcb->OSTCBPrio;
-        }
+    for (ptcb = OSTCBList; ptcb != NULL ; ptcb = ptcb->OSTCBNext) {
+        if ( ptcb->OSTCBPrio == OS_IDLE_PRIO || ptcb->OSTCBPrio == OS_STAT_PRIO )
+          ;
+        else {
+          // 確認該task是在ready狀態
+          if (ptcb->OSTCBStat == OS_STAT_RDY && ptcb->OSTCBDly == 0) {
+              // test
+              if (ptcb->deadline < closest_deadline ) {
+                  closest_deadline = ptcb->deadline ;
+                  highestPrio = ptcb->OSTCBPrio;
+              } // 修改成比較deadline // henry modified     
+          }
+        } // else  
     }
-
+    
     return highestPrio;
 }

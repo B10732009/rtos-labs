@@ -410,6 +410,7 @@ typedef struct os_tcb {
 #endif
     int period;         // task週期     // henry modified 
     int computeTime;    // task執行時間 // henry modefied
+    int deadline;       // deadline時間 // henry modefied
 } OS_TCB;
 
 /*$PAGE*/
