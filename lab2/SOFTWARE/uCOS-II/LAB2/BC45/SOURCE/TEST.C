@@ -44,7 +44,7 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
   OSTCBCur->computeTime = _computeTime;
   OSTCBCur->period = _period;
   OSTCBCur->deadline = _period;
-    
+  start = 0 ;
   while (1) {
     // See if key has been pressed
     if (PC_GetKey(&key) == TRUE) {                     
@@ -55,8 +55,6 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
       }
     }
 
-    // 取得開始時間
-    start = OSTimeGet();
     // 等待task執行結束
     while (OSTCBCur->computeTime > 0)
       ; // Busywaiting
@@ -65,7 +63,7 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
     // 計算完成時間與期望時間的差 -> 期望花的時間:period, 實際花的時間:end-start 
     toDelay = OSTCBCur->period - (end - start);
     // 計算下一輪開始時間
-    //start += OSTCBCur->period;
+    start += OSTCBCur->period;
     // 重製執行時間
     OSTCBCur->computeTime = _computeTime;
     // 將deadline增加至下一周期
@@ -73,17 +71,18 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
     // 檢查此task是否超時
     if (toDelay < 0) { // 超時
       OS_ENTER_CRITICAL();
-      printf("%d\tTask%d Deadline!\ntodelay:%d start:%d end:%d", OSTCBCur->deadline, _taskId, toDelay, start, end);
+      printf("%d\tTask%d Deadline!\n", OSTCBCur->deadline, _taskId);
       OS_EXIT_CRITICAL();
     }
     else { // 未超時
+      OSTimeDly(toDelay);
       if (_isPrint) {
         OS_ENTER_CRITICAL();
         PrintMsgList();
         OS_EXIT_CRITICAL();
       }
 
-      OSTimeDly(toDelay);
+      //OSTimeDly(toDelay);
     }
   }
 }

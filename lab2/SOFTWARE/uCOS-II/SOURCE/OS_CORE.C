@@ -1080,7 +1080,7 @@ INT8U  OS_TCBInit (INT8U prio, OS_STK *ptos, OS_STK *pbos, INT16U id, INT32U stk
         ptcb->OSTCBPrio      = (INT8U)prio;                /* Load task priority into TCB              */
         ptcb->OSTCBStat      = OS_STAT_RDY;                /* Task is ready to run                     */
         ptcb->OSTCBDly       = 0;                          /* Task is not delayed                      */
-        ptcb->deadline       = 64;                       // 初始化deadline // henry modified
+        ptcb->deadline       = 128;                        // 初始化deadline // henry modified
 #if OS_TASK_CREATE_EXT_EN > 0
         ptcb->OSTCBExtPtr    = pext;                       /* Store pointer to TCB extension           */
         ptcb->OSTCBStkSize   = stk_size;                   /* Store stack size                         */
@@ -1155,8 +1155,8 @@ static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) 
 }
 
 static  INT8U  EDFprioSelector() { // yuchen modified
-    INT8U highestPrio = OS_IDLE_PRIO;
-    int closest_deadline = 1000 ; // 距離最近的deadline, 1000只是隨便給予的初始值 // henry modified
+    INT8U highestPrio = OS_IDLE_PRIO ;
+    int closest_deadline = 500 ; // 距離最近的deadline, 1000只是隨便給予的初始值 // henry modified
     OS_TCB *ptcb;
     // 走訪TCB列表
     for (ptcb = OSTCBList; ptcb != NULL ; ptcb = ptcb->OSTCBNext) {
@@ -1164,9 +1164,9 @@ static  INT8U  EDFprioSelector() { // yuchen modified
           ;
         else {
           // 確認該task是在ready狀態
-          if (ptcb->OSTCBStat == OS_STAT_RDY && ptcb->OSTCBDly == 0) {
+          if (ptcb->OSTCBDly == 0) {
               // test
-              if (ptcb->deadline < closest_deadline ) {
+              if (ptcb->deadline <= closest_deadline ) {
                   closest_deadline = ptcb->deadline ;
                   highestPrio = ptcb->OSTCBPrio;
               } // 修改成比較deadline // henry modified     
@@ -1174,5 +1174,6 @@ static  INT8U  EDFprioSelector() { // yuchen modified
         } // else  
     }
     
+    //ptcb->OSTCBStat == OS_STAT_RDY
     return highestPrio;
 }
