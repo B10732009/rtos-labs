@@ -15,6 +15,7 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint);
 void Task1(void *pdata); // Function prototypes of Startup task
 void Task2();  
 void Task3();
+void init_deadline(); 
 void PrintMsgList();
 void InitMsgList();
 
@@ -32,6 +33,7 @@ void main(void) {
   OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
   OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
   //OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
+  init_deadline() ;
   // Initialize message list
   InitMsgList();
   // Start multitasking
@@ -75,14 +77,14 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
       OS_EXIT_CRITICAL();
     }
     else { // 未超時
-      OSTimeDly(toDelay);
+      //OSTimeDly(toDelay);
       if (_isPrint) {
         OS_ENTER_CRITICAL();
         PrintMsgList();
         OS_EXIT_CRITICAL();
       }
 
-      //OSTimeDly(toDelay);
+      OSTimeDly(toDelay);
     }
   }
 }
@@ -143,3 +145,19 @@ void InitMsgList() {
   msgList = (msg*)malloc(sizeof(msg));
   msgList->next = (msg*)0;
 }
+
+void init_deadline() {
+  
+  OS_TCB *ptcb;
+    // 走訪TCB列表
+    for (ptcb = OSTCBList; ptcb != NULL ; ptcb = ptcb->OSTCBNext) {
+      if (ptcb->OSTCBPrio == 1 )
+        ptcb->deadline = 3 ;
+      else if (ptcb->OSTCBPrio == 2 )
+        ptcb->deadline = 5 ;
+      else if (ptcb->OSTCBPrio == 3 )
+        ptcb->deadline = 10 ;
+    } // for 
+
+
+} // init_deadline()
