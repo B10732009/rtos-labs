@@ -18,12 +18,14 @@ void Task12();
 void Task21(void *pdata); // Function prototypes of Startup task
 void Task22();
 void Task23();
-void init_deadline(); 
+void InitDeadline(); 
 void PrintMsgList();
 void InitMsgList();
 
 // USING WHICH TASKSET
-#define USING_TASKSET 2
+#define USING_TASKSET 1
+const int taskSet1[2][2] = {1, 3, 3, 5};
+const int taskSet2[3][2] = {1, 4, 2, 5, 2, 10};
 
 // MAIN
 void main(void) {
@@ -50,7 +52,7 @@ void main(void) {
       break; // never happen
   }
   // Initialize deadline of each task
-  init_deadline() ;
+  InitDeadline() ;
   // Initialize message list
   InitMsgList();
   // Start multitasking
@@ -132,28 +134,28 @@ void StartUpTask(void *pdata) {
 // Task 1-1 (STARTUP TASK)
 void Task11(void *pdata) {
   StartUpTask(pdata);
-  BaseTask(1, 1, 3, 1);
+  BaseTask(1, taskSet1[0][0], taskSet1[0][1], 1);
 }
 
 // Task 1-2
 void Task12() {
-  BaseTask(2, 3, 5, 0);
+  BaseTask(2, taskSet1[1][0], taskSet1[1][1], 0);
 }
 
 // Task 2-1 (STARTUP TASK)
 void Task21(void *pdata) {
   StartUpTask(pdata);
-  BaseTask(1, 1, 4, 1);
+  BaseTask(1, taskSet2[0][0], taskSet2[0][1], 1);
 }
 
 // Task 2-2
 void Task22() {
-  BaseTask(2, 2, 5, 0);
+  BaseTask(2, taskSet2[1][0], taskSet2[1][1], 0);
 }
 
 // Task 2-3
 void Task23() {
-  BaseTask(3, 2, 10, 0);
+  BaseTask(3, taskSet2[2][0], taskSet2[2][1], 0);
 }
 
 void PrintMsgList() {
@@ -178,18 +180,22 @@ void InitMsgList() {
   msgList->next = (msg*)0;
 }
 
-void init_deadline() {
-  
+void InitDeadline() {
   OS_TCB *ptcb;
-    // 走訪TCB列表
-    for (ptcb = OSTCBList; ptcb != NULL ; ptcb = ptcb->OSTCBNext) {
-      if (ptcb->OSTCBPrio == 1 )
-        ptcb->deadline = 3 ;
-      else if (ptcb->OSTCBPrio == 2 )
-        ptcb->deadline = 5 ;
-      else if (ptcb->OSTCBPrio == 3 )
-        ptcb->deadline = 10 ;
-    } // for 
-
-
-} // init_deadline()
+  // 走訪TCB列表, 初始各task的deadline
+  for (ptcb = OSTCBList; ptcb != (OS_TCB*)0; ptcb = ptcb->OSTCBNext) {
+    switch (ptcb->OSTCBPrio) {
+      case 1:
+        ptcb->deadline = (USING_TASKSET == 1) ? taskSet1[0][1] : taskSet2[0][1];
+        break;
+      case 2:
+        ptcb->deadline = (USING_TASKSET == 1) ? taskSet1[1][1] : taskSet2[1][1];
+        break;
+      case 3:
+        ptcb->deadline = taskSet2[2][1];
+        break;
+      default:
+        break; // never happen
+    }
+  } // for
+} // InitDeadline()
