@@ -12,12 +12,18 @@ OS_EVENT *RandomSem;
 
 // FUNCTION PROTOTYPES
 void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint);
-void Task1(void *pdata); // Function prototypes of Startup task
-void Task2();  
-void Task3();
+void StartUpTask(void *pdata);
+void Task11(void *pdata); // Function prototypes of Startup task
+void Task12();
+void Task21(void *pdata); // Function prototypes of Startup task
+void Task22();
+void Task23();
 void init_deadline(); 
 void PrintMsgList();
 void InitMsgList();
+
+// USING WHICH TASKSET
+#define USING_TASKSET 2
 
 // MAIN
 void main(void) {
@@ -30,9 +36,20 @@ void main(void) {
   // Random number semaphore
   RandomSem = OSSemCreate(1);
   // Create tasks
-  OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
-  OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
-  //OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
+  switch (USING_TASKSET) {
+    case 1:
+      OSTaskCreate(Task11, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
+      OSTaskCreate(Task12, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
+      break;
+    case 2:
+      OSTaskCreate(Task21, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
+      OSTaskCreate(Task22, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
+      OSTaskCreate(Task23, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
+      break;
+    default:
+      break; // never happen
+  }
+  // Initialize deadline of each task
   init_deadline() ;
   // Initialize message list
   InitMsgList();
@@ -89,9 +106,8 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
   }
 }
 
-// Task1 (STARTUP TASK)
-void Task1(void *pdata) {
-  // Allocate storage for CPU status register
+void StartUpTask(void *pdata) {
+// Allocate storage for CPU status register
 #if OS_CRITICAL_METHOD == 3
   OS_CPU_SR  cpu_sr;
 #endif
@@ -111,16 +127,32 @@ void Task1(void *pdata) {
   
   // 在做完start up task所需額外做的事之後，將tick歸零  
   OSTimeSet(0);
+}
+
+// Task 1-1 (STARTUP TASK)
+void Task11(void *pdata) {
+  StartUpTask(pdata);
   BaseTask(1, 1, 3, 1);
 }
 
-// Task2
-void Task2() {
+// Task 1-2
+void Task12() {
   BaseTask(2, 3, 5, 0);
 }
 
-// Task3
-void Task3() {
+// Task 2-1 (STARTUP TASK)
+void Task21(void *pdata) {
+  StartUpTask(pdata);
+  BaseTask(1, 1, 4, 1);
+}
+
+// Task 2-2
+void Task22() {
+  BaseTask(2, 2, 5, 0);
+}
+
+// Task 2-3
+void Task23() {
   BaseTask(3, 2, 10, 0);
 }
 
