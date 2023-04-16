@@ -190,6 +190,7 @@ void  OSIntExit (void)
             // OSIntExitY    = OSUnMapTbl[OSRdyGrp];          /* ... and not locked.                      */
             // OSPrioHighRdy = (INT8U)((OSIntExitY << 3) + OSUnMapTbl[OSRdyTbl[OSIntExitY]]);
 
+            /* 使用EDF排班法 */
             OSPrioHighRdy = EDFprioSelector(); // yuchen modified
 
             if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy */
@@ -310,11 +311,13 @@ void  OSStart (void)
 
     if (OSRunning == FALSE) {
         
-        y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
-        x             = OSUnMapTbl[OSRdyTbl[y]];
-        OSPrioHighRdy = (INT8U)((y << 3) + x);
+        // y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
+        // x             = OSUnMapTbl[OSRdyTbl[y]];
+        // OSPrioHighRdy = (INT8U)((y << 3) + x);
 
-        //OSPrioHighRdy = EDFprioSelector(); // yuchen modified
+        /* 使用EDF排班法 */
+        /* 注意:要先初始化每個task的deadline*/
+        OSPrioHighRdy = EDFprioSelector(); // yuchen modified
         
         /* 增加一筆complete訊息到訊息佇列 */
         AddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
@@ -401,7 +404,6 @@ void  OSTimeTick (void)
             if (ptcb->OSTCBDly != 0) {                     /* Delayed or waiting for event with TO     */
                 if (--ptcb->OSTCBDly == 0) {               /* Decrement nbr of ticks to end of delay   */
                     if ((ptcb->OSTCBStat & OS_STAT_SUSPEND) == OS_STAT_RDY) { /* Is task suspended?    */
-                        //ptcb->deadline = ptcb->deadline + ptcb->period ; // 更新deadline // henry modified
                         OSRdyGrp               |= ptcb->OSTCBBitY; /* No,  Make task R-to-R (timed out)*/
                         OSRdyTbl[ptcb->OSTCBY] |= ptcb->OSTCBBitX;
                     } else {                               /* Yes, Leave 1 tick to prevent ...         */
@@ -903,6 +905,7 @@ void  OS_Sched (void)
         // y             = OSUnMapTbl[OSRdyGrp];          /* Get pointer to HPT ready to run              */
         // OSPrioHighRdy = (INT8U)((y << 3) + OSUnMapTbl[OSRdyTbl[y]]);
         
+        /* 使用EDF排班法 */
         OSPrioHighRdy = EDFprioSelector(); // yuchen modified
         
         if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy     */
@@ -1155,25 +1158,27 @@ static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) 
 }
 
 static  INT8U  EDFprioSelector() { // yuchen modified
-    INT8U highestPrio = OS_IDLE_PRIO ;
-    int closest_deadline = 500 ; // 距離最近的deadline, 1000只是隨便給予的初始值 // henry modified
-    OS_TCB *ptcb;
-    // 走訪TCB列表
-    for (ptcb = OSTCBList; ptcb != NULL ; ptcb = ptcb->OSTCBNext) {
-        if ( ptcb->OSTCBPrio == OS_IDLE_PRIO || ptcb->OSTCBPrio == OS_STAT_PRIO )
-          ;
-        else {
-          // 確認該task是在ready狀態
-          if (ptcb->OSTCBDly == 0) {
-              // test
-              if (ptcb->deadline < closest_deadline ) {
-                  closest_deadline = ptcb->deadline ;
-                  highestPrio = ptcb->OSTCBPrio;
-              } // 修改成比較deadline // henry modified     
-          }
-        } // else  
-    }
+    OS_TCB *ptcb;               /* 走訪TCB列表用的指標 */
+    OS_TCB *stcb = (OS_TCB*)0;  /* 紀錄距離最近deadline的指標 */
     
-    //ptcb->OSTCBStat == OS_STAT_RDY
-    return highestPrio;
+    /* 走訪TCB列表 */
+    for (ptcb = OSTCBList; ptcb != (OS_TCB*)0; ptcb = ptcb->OSTCBNext) {
+        /* 內建task不進行EDF排班 */
+        if (ptcb->OSTCBPrio == OS_IDLE_PRIO || ptcb->OSTCBPrio == OS_STAT_PRIO) {
+            continue;
+        }
+        /* 確認該task已經delay結束 */
+        if (ptcb->OSTCBDly == 0) {
+            /* 若該task的deadline為當前距離最近的, 將其記錄起來 */
+            if (stcb == (OS_TCB*)0 || ptcb->deadline < stcb->deadline) {
+                stcb = ptcb;
+            }
+        }
+    }
+
+    // 若stcb為NULL, 表示所有自定義task都未被選中(都在delay中), 則回傳idle
+    if (stcb == (OS_TCB*)0)
+        return OS_IDLE_PRIO;
+
+    return stcb->OSTCBPrio;
 }
