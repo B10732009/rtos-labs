@@ -190,8 +190,24 @@ void  OSIntExit (void)
             // OSIntExitY    = OSUnMapTbl[OSRdyGrp];          /* ... and not locked.                      */
             // OSPrioHighRdy = (INT8U)((OSIntExitY << 3) + OSUnMapTbl[OSRdyTbl[OSIntExitY]]);
 
-            /* 使用EDF排班法 */
-            OSPrioHighRdy = EDFprioSelector(); // yuchen modified
+            /*
+                正常情況, task結束本輪的執行, 會呼叫OSTimeDly(), 並啟動OS_Sched()排班。
+                但若同時有某一task剛好結束休眠狀態, 則會在OSTimeTick()->OSIntExit()時的排班被選中, 
+                就會變成該task去preempt結束執行的task, 且由於結束執行的task還處於未離開的狀態, 
+                之後呼叫OSTimeDly()時, 還會在OS_Sched()再排班一次。
+
+                因此這邊檢查當前的computeTime是否為0, 
+                若為0, 則表示其實這個task已經完成了, 不應該進入到這邊排班。
+                將OSPrioHighRdy強制設OSPrioCur, 讓context switch不要發生, 
+                該task會繼續執行到OSTimeDly()的地方, 並由OS_Sched()進行排班。
+            */
+            if (OSTCBCur->computeTime == 0) {
+                /* task實際上已完成, 因此直接跳過這邊的context switch, 讓OS_Sched()去做即可 */
+                OSPrioHighRdy = OSPrioCur;
+            } else {
+                /* 使用EDF排班法 */
+                OSPrioHighRdy = EDFprioSelector(); // yuchen modified
+            }
 
             if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy */
                 OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy];
