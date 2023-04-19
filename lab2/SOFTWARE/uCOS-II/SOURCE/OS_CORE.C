@@ -1186,7 +1186,7 @@ static  INT8U  EDFprioSelector() { // yuchen modified
         /* 確認該task已經delay結束 */
         if (ptcb->OSTCBDly == 0) {
             /* 若該task的deadline為當前距離最近的, 將其記錄起來 */
-            if (stcb == (OS_TCB*)0 || ptcb->deadline < stcb->deadline) {
+            if (stcb == (OS_TCB*)0 || ptcb->deadline <= stcb->deadline) {
                 stcb = ptcb;
             }
         }

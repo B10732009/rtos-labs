@@ -23,7 +23,7 @@ void PrintMsgList();
 void InitMsgList();
 
 // USING WHICH TASKSET
-#define USING_TASKSET 1
+#define USING_TASKSET 2
 const int taskSet1[2][2] = {1, 3, 3, 5};
 const int taskSet2[3][2] = {1, 4, 2, 5, 2, 10};
 
