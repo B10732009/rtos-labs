@@ -9,6 +9,10 @@ OS_STK TaskStk[N_TASKS][TASK_STK_SIZE]; // Tasks stacks
 OS_STK TaskStartStk[TASK_STK_SIZE];
 char   TaskData[N_TASKS]; // Parameters to pass to each task
 OS_EVENT *RandomSem;
+OS_EVENT *R1;
+OS_EVENT *R2;
+int _useR1 = 0 ;
+int _useR2 = 0 ;
 
 // FUNCTION PROTOTYPES
 void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint);
@@ -29,9 +33,9 @@ void main(void) {
   // Random number semaphore
   RandomSem = OSSemCreate(1);
   // Create tasks
-  OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 1);
-  OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
-  OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
+  OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 3);
+  // OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
+  // OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
   // Initialize message list
   InitMsgList();
   // Start multitasking
@@ -40,6 +44,7 @@ void main(void) {
 
 void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
   INT16S key;
+  INT8U *error;
   int start, end, toDelay, deadline;
   OSTCBCur->computeTime = _computeTime;
   OSTCBCur->period = _period;
@@ -58,8 +63,21 @@ void BaseTask(int _taskId, int _computeTime, int _period, int _isPrint) {
     // 取得開始時間
     start = OSTimeGet();
     // 等待task執行結束
-    while (OSTCBCur->computeTime > 0)
-      ; // Busywaiting
+    while (OSTCBCur->computeTime > 0) {
+      if ( OSTCBCur->computeTime == 4 && _useR1 == 0 ) { 
+        OSMutexPend(R1, 5, error) ;
+        _useR1 = 1 ;
+      } // if   
+      // if ( OSTCBCur->computeTime == 2 && _useR2 == 0 ) {
+      //   OSMutexPend(R2, 5, error) ;
+      //   _useR2 = 1 ;
+      // } // if   
+    } // while    
+    // Release mutex
+    OSMutexPost(R1) ;
+    _useR1 = 0 ;
+    // OSMutexPost(R2) ;
+    _useR2 = 0 ;
     // 取得結束時間
     end = OSTimeGet();
     // 計算完成時間與期望時間的差 -> 期望花的時間:period, 實際花的時間:end-start 
@@ -93,6 +111,9 @@ void Task1(void *pdata) {
 #if OS_CRITICAL_METHOD == 3
   OS_CPU_SR  cpu_sr;
 #endif
+
+  INT8U *R1_error ;
+  INT8U *R2_error ;
   // Prevent compiler warning
   pdata = pdata;
 
@@ -109,7 +130,19 @@ void Task1(void *pdata) {
   
   // 在做完start up task所需額外做的事之後，將tick歸零  
   OSTimeSet(0);
-  BaseTask(1, 1, 3, 1);
+  R1 = OSMutexCreate (1, R1_error) ;
+  R2 = OSMutexCreate (2, R2_error) ;
+  if ( !R1 )
+    printf("r1 invalid\n") ;
+  else 
+    printf("r1 valid\n") ;
+  if ( !R2 ) {
+    printf("r2 invalid\n") ;
+    printf("%d\n", *R2_error) ;
+  } // if 
+  else
+    printf("r2 valid\n") ;
+  BaseTask(1, 6, 10, 1);
 }
 
 // Task2
@@ -125,12 +158,23 @@ void Task3() {
 void PrintMsgList() {
   while (msgList->next) {
     // 印出訊息佇列節點訊息
-    printf("%d\t%s\t%d\t%d\n", 
-      msgList->next->tick,
-      (msgList->next->event ? "Complete" : "Preemt  "),
-      msgList->next->fromTaskId,
-      msgList->next->toTaskId
-    );
+    // printf("%d\t%s\t%d\t%d\n", 
+    //   msgList->next->tick,
+    //   (msgList->next->event ? "Complete" : "Preemt  "),
+    //   msgList->next->fromTaskId,
+    //   msgList->next->toTaskId
+    // );
+    printf( "%d\t", msgList->next->tick) ;
+    if ( msgList->next->event == 0 )
+      printf( "%s\t", "Complete") ;
+    else if ( msgList->next->event == 1 )
+      printf( "%s\t", "Preemt  ") ;
+    else if ( msgList->next->event == 2 )
+      printf( "%s\t", "lock    ") ;
+    else if ( msgList->next->event == 3 )
+      printf( "%s\t", "unlock  ") ;
+    printf( "%d\t", msgList->next->fromTaskId) ;
+    printf( "%d\n", msgList->next->toTaskId) ;  
     // 將印過的節點刪掉
     msgTemp = msgList;
     msgList = msgList->next;

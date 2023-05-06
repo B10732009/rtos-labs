@@ -423,6 +423,7 @@ typedef struct os_tcb {
 typedef struct _msg {
     int tick;           // 當前時間(tick)
     int event;          // 事件(0=preemt, 1=complete)
+    int resource;       // resource ID
     int fromTaskId;     // 事件發生前 task ID
     int toTaskId;       // 事件發生後 task ID
     struct _msg *next;
