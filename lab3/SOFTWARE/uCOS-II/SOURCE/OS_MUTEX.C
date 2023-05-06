@@ -366,6 +366,7 @@ void  OSMutexPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
         *err  = OS_NO_ERR;
         return;                                            
     }
+
     // pip   = (INT8U)(pevent->OSEventCnt >> 8);                     /* No, Get PIP from mutex            */
     // mprio = (INT8U)(pevent->OSEventCnt & OS_MUTEX_KEEP_LOWER_8);  /*     Get priority of mutex owner   */
     // ptcb  = (OS_TCB *)(pevent->OSEventPtr);                       /*     Point to TCB of mutex owner   */
@@ -391,6 +392,7 @@ void  OSMutexPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
     //     }
     //     OSTCBPrioTbl[pip]       = (OS_TCB *)ptcb;
     // }
+
     OSTCBCur->OSTCBStat |= OS_STAT_MUTEX;             /* Mutex not available, pend current task        */
     OSTCBCur->OSTCBDly   = timeout;                   /* Store timeout in current task's TCB           */
     OS_EventTaskWait(pevent);                         /* Suspend task until event or timeout occurs    */
