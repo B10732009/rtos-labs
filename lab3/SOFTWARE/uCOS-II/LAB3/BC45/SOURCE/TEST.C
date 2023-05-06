@@ -23,7 +23,7 @@ void Task2();
 void Task3();
 void PrintMsgList();
 void InitMsgList();
-void AddMsgList();
+void testAddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId);
 
 // MAIN
 void main(void) {
@@ -34,7 +34,7 @@ void main(void) {
   // Install uC/OS-II's context switch vector
   PC_VectSet(uCOS, OSCtxSw);
   // Random number semaphore
-  RandomSem = OSSemCreate(1);
+  // RandomSem = OSSemCreate(1);
   // Create tasks
   OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 3);
   // OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
@@ -116,6 +116,7 @@ void Task1(void *pdata) {
   INT16S key;
   INT8U error;
   int prio = 3;
+  int tempPrio;
   int arrive = 8;
   int start = arrive;
   int end;
@@ -168,21 +169,25 @@ void Task1(void *pdata) {
       }
     }
 
-    OS_ENTER_CRITICAL();
-    AddMsgList(OSTimeGet(), 3, 100, 100);
-    OS_EXIT_CRITICAL();
+    // OS_ENTER_CRITICAL();
+    // testAddMsgList(OSTimeGet(), 3, 100, 100);
+    // OS_EXIT_CRITICAL();
 
     // 取得開始時間
     // start = OSTimeGet();
     // 等待task執行結束
     while (OSTCBCur->computeTime > 0) {
       if (OSTCBCur->computeTime == 4 && !useR1) { 
+        tempPrio = OSTCBCur->OSTCBPrio;
         OSMutexPend(R1, 5, &error);
+        // OS_ENTER_CRITICAL();
+        // testAddMsgList(OSTimeGet(), 2, 100 + tempPrio, 100 + OSTCBCur->OSTCBPrio);
+        // OS_EXIT_CRITICAL();
         useR1 = 1;
       }
       else if (OSTCBCur->computeTime == 2 && !useR2) {
-        // OSMutexPend(R2, 5, &error);
-        // useR2 = 1 ;
+        OSMutexPend(R2, 5, &error);
+        useR2 = 1 ;
       } 
     }  
     // Release mutex
@@ -238,9 +243,9 @@ void PrintMsgList() {
     //   msgList->next->toTaskId
     // );
     printf( "%d\t", msgList->next->tick) ;
-    if ( msgList->next->event == 0 )
+    if ( msgList->next->event == 1 )
       printf( "%s\t", "Complete") ;
-    else if ( msgList->next->event == 1 )
+    else if ( msgList->next->event == 0 )
       printf( "%s\t", "Preemt  ") ;
     else if ( msgList->next->event == 2 )
       printf( "%s\t", "lock    ") ;
@@ -261,8 +266,8 @@ void InitMsgList() {
   msgList->next = (msg*)0;
 }
 
-static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) {
-    /* 尋找訊息佇列尾端 */
+void testAddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) {
+/* 尋找訊息佇列尾端 */
     msgTemp = msgList;
     while (msgTemp->next)
         msgTemp = msgTemp->next;
