@@ -19,7 +19,7 @@
 *********************************************************************************************************
 */
 
-#define OS_MAX_EVENTS             2    /* Max. number of event control blocks in your application ...  */
+#define OS_MAX_EVENTS             3    /* Max. number of event control blocks in your application ...  */
                                        /* ... MUST be > 0                                              */
 #define OS_MAX_FLAGS              5    /* Max. number of Event Flag Groups    in your application ...  */
                                        /* ... MUST be > 0                                              */
