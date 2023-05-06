@@ -37,7 +37,7 @@ void main(void) {
   // RandomSem = OSSemCreate(1);
   // Create tasks
   OSTaskCreate(Task1, (void *)0, &TaskStk[0][TASK_STK_SIZE-1], 3);
-  // OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 2);
+  OSTaskCreate(Task2, (void *)0, &TaskStk[1][TASK_STK_SIZE-1], 4);
   // OSTaskCreate(Task3, (void *)0, &TaskStk[2][TASK_STK_SIZE-1], 3);
   // Create mutexs
   R1 = OSMutexCreate (1, &R1_error);
@@ -223,10 +223,81 @@ void Task1(void *pdata) {
   }
 }
 
-// // Task2
-// void Task2() {
-//   BaseTask(2, 3, 6, 0);
-// }
+// Task2
+void Task2() {
+  INT16S key;
+  INT8U error;
+  int prio = 4;
+  int tempPrio;
+  int arrive = 4;
+  int start = arrive;
+  int end;
+  int toDelay;
+  int computeTime = 6;
+  int period = 30;
+  int deadline = arrive + period;
+  // int useR1 = 0; // R1是否正在使用
+  int useR2 = 0; // R2是否正在使用
+  
+  OSTCBCur->computeTime = computeTime;
+  OSTCBCur->period = period;
+
+  OSTimeDly(4);
+    
+  while (1) {
+    // See if key has been pressed
+    if (PC_GetKey(&key) == TRUE) {                     
+      // Yes, see if it's the ESCAPE key
+      if (key == 0x1B) {
+        // Return to DOS
+        PC_DOSReturn();
+      }
+    }
+
+    // OS_ENTER_CRITICAL();
+    // testAddMsgList(OSTimeGet(), 3, 100, 100);
+    // OS_EXIT_CRITICAL();
+
+    // 取得開始時間
+    // start = OSTimeGet();
+    // 等待task執行結束
+    while (OSTCBCur->computeTime > 0) {
+      if (OSTCBCur->computeTime == 4 && !useR2) {
+        OSMutexPend(R2, 5, &error);
+        useR2 = 1;
+      } 
+    }
+
+    // Release mutex
+    OSMutexPost(R2);
+    useR2 = 0;
+    
+    // 取得結束時間
+    end = OSTimeGet();
+    // 計算完成時間與期望時間的差 -> 期望花的時間:period, 實際花的時間:end-start 
+    toDelay = OSTCBCur->period - (end - start);
+    // 計算下一輪開始時間
+    start += OSTCBCur->period;
+    // 重製執行時間
+    OSTCBCur->computeTime = computeTime;
+    // 檢查此task是否超時
+    if (toDelay < 0) { // 超時
+      OS_ENTER_CRITICAL();
+      printf("%d\tTask%d Deadline!\n", deadline, prio);
+      OS_EXIT_CRITICAL();
+    }
+    else { // 未超時
+      if (0) {
+        OS_ENTER_CRITICAL();
+        PrintMsgList();
+        OS_EXIT_CRITICAL();
+      }
+      OSTimeDly(toDelay);
+    }
+    // 將deadline增加至下一周期
+    deadline += OSTCBCur->period;
+  }
+}
 
 // // Task3
 // void Task3() {
