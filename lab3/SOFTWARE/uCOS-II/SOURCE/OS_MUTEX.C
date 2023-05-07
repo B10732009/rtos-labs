@@ -31,7 +31,7 @@
 #if OS_MUTEX_EN > 0
 
 /* self-defined functions */
-static  void  _AddMsgList(int _tick, int _event, int _resource, int _fromTaskId, int _toTaskId);
+static  void  mutexAddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId);
 
 /*
 *********************************************************************************************************
@@ -334,14 +334,13 @@ void  OSMutexPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
 #endif
     OS_ENTER_CRITICAL();								   /* Is Mutex available?                      */
     if ((INT8U)(pevent->OSEventCnt & OS_MUTEX_KEEP_LOWER_8) == OS_MUTEX_AVAILABLE) {
-        pip   = (INT8U)(pevent->OSEventCnt >> 8);          /* Get PIP from mutex                       */ /* henry modified */
         mprio = OSTCBCur->OSTCBPrio;                       /* henry modified */
-        AddMsgList(OSTimeGet(), 2, mprio, pip);            /* henry modified */
         pevent->OSEventCnt &= OS_MUTEX_KEEP_UPPER_8;       /* Yes, Acquire the resource                */
         pevent->OSEventCnt |= OSTCBCur->OSTCBPrio;         /*      Save priority of owning task        */
         pevent->OSEventPtr  = (void *)OSTCBCur;            /*      Point to owning task's OS_TCB       */
+        pip   = (INT8U)(pevent->OSEventCnt >> 8);          /* Get PIP from mutex                       */ /* henry modified */
         ptcb  = (OS_TCB *)(pevent->OSEventPtr);            /*     Point to TCB of mutex owner          */ /* henry modified */
-        if ((OSRdyTbl[ptcb->OSTCBY] & ptcb->OSTCBBitX) != 0x00) { /*     See if mutex owner is ready   */ /* from line 341 to line 362 */
+        if ((OSRdyTbl[ptcb->OSTCBY] & ptcb->OSTCBBitX) != 0x00) { /*     See if mutex owner is ready   */ 
                                                                   /*     Yes, Remove owner from Rdy ...*/ 
                                                                   /*          ... list at current prio */ 
             if ((OSRdyTbl[ptcb->OSTCBY] &= ~ptcb->OSTCBBitX) == 0x00) {
@@ -352,6 +351,9 @@ void  OSMutexPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
         else {                                             /* No                                */
             rdy = FALSE;                                          
         }
+
+        mutexAddMsgList(OSTimeGet(), 2, mprio, pip);       /* henry modified */
+        
         ptcb->OSTCBPrio         = pip;                     /* Change owner task prio to PIP            */
         ptcb->OSTCBY            = ptcb->OSTCBPrio >> 3;
         ptcb->OSTCBBitY         = OSMapTbl[ptcb->OSTCBY];
@@ -366,6 +368,7 @@ void  OSMutexPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
         *err  = OS_NO_ERR;
         return;                                            
     }
+
     // pip   = (INT8U)(pevent->OSEventCnt >> 8);                     /* No, Get PIP from mutex            */
     // mprio = (INT8U)(pevent->OSEventCnt & OS_MUTEX_KEEP_LOWER_8);  /*     Get priority of mutex owner   */
     // ptcb  = (OS_TCB *)(pevent->OSEventPtr);                       /*     Point to TCB of mutex owner   */
@@ -391,6 +394,7 @@ void  OSMutexPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
     //     }
     //     OSTCBPrioTbl[pip]       = (OS_TCB *)ptcb;
     // }
+
     OSTCBCur->OSTCBStat |= OS_STAT_MUTEX;             /* Mutex not available, pend current task        */
     OSTCBCur->OSTCBDly   = timeout;                   /* Store timeout in current task's TCB           */
     OS_EventTaskWait(pevent);                         /* Suspend task until event or timeout occurs    */
@@ -469,7 +473,7 @@ INT8U  OSMutexPost (OS_EVENT *pevent)
         OSTCBPrioTbl[prio]          = (OS_TCB *)OSTCBCur;
     }
 
-    AddMsgList(OSTimeGet(), 3, pip, prio);   /* henry modified */
+    mutexAddMsgList(OSTimeGet(), 3, pip, prio);   /* henry modified */
 
     OSTCBPrioTbl[pip] = (OS_TCB *)1;                  /* Reserve table entry                           */
     if (pevent->OSEventGrp != 0x00) {                 /* Any task waiting for the mutex?               */
@@ -489,7 +493,7 @@ INT8U  OSMutexPost (OS_EVENT *pevent)
 }
 
 /* self-defined functions */
-static  void  _AddMsgList(int _tick, int _event, int _resource, int _fromTaskId, int _toTaskId) {
+static  void  mutexAddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) {
     /* 尋找訊息佇列尾端 */
     msgTemp = msgList;
     while (msgTemp->next)
@@ -498,7 +502,7 @@ static  void  _AddMsgList(int _tick, int _event, int _resource, int _fromTaskId,
     msgTemp->next = (msg*)malloc(sizeof(msg));
     msgTemp->next->tick = _tick;
     msgTemp->next->event = _event;
-    msgTemp->next->resource = _resource;
+    // msgTemp->next->resource = _resource;
     msgTemp->next->fromTaskId = _fromTaskId;
     msgTemp->next->toTaskId = _toTaskId;
     msgTemp->next->next = (msg*)0;
