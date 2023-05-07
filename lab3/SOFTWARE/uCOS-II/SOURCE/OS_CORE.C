@@ -1136,6 +1136,7 @@ static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) 
     msgTemp->next = (msg*)malloc(sizeof(msg));
     msgTemp->next->tick = _tick;
     msgTemp->next->event = _event;
+    msgTemp->next->resource = 0 ;
     msgTemp->next->fromTaskId = _fromTaskId;
     msgTemp->next->toTaskId = _toTaskId;
     msgTemp->next->next = (msg*)0;
