@@ -329,10 +329,10 @@ void Tasks2_1(void *pdata) {
         OSMutexPend(R2, 5, &error);
         useR2 = 1 ;
       } // if
-      if ( OSTCBCur->computeTime == 6 && useR2 ) {
-        OSMutexPost(R2);
-        useR2 = 0 ;
-      } // if 
+      // if ( OSTCBCur->computeTime == 6 && useR2 ) {
+      //   OSMutexPost(R2);
+      //   useR2 = 0 ;
+      // } // if 
       if ( OSTCBCur->computeTime == 6 && !useR1 ) { 
         OSMutexPend(R1, 5, &error);
         useR1 = 1;
@@ -341,10 +341,10 @@ void Tasks2_1(void *pdata) {
         OSMutexPost(R1);
         useR1 = 0 ;
       } // else if
-      if ( OSTCBCur->computeTime == 3 && !useR2 ) {
-        OSMutexPend(R2, 5, &error);
-        useR2 = 1 ;
-      } // if
+      // if ( OSTCBCur->computeTime == 3 && !useR2 ) {
+      //   OSMutexPend(R2, 5, &error);
+      //   useR2 = 1 ;
+      // } // if
        
     } // while 
     // Release mutex
@@ -408,10 +408,10 @@ void Tasks2_2() {
         OSMutexPend(R1, 5, &error);
         useR1 = 1;
       } // if 
-      if ( OSTCBCur->computeTime == 4 && useR1 ) {
-        OSMutexPost(R1);
-        useR1 = 0 ;
-      } // else if 
+      // if ( OSTCBCur->computeTime == 4 && useR1 ) {
+      //   OSMutexPost(R1);
+      //   useR1 = 0 ;
+      // } // else if 
       if ( OSTCBCur->computeTime == 4 && !useR2 ) {
         OSMutexPend(R2, 5, &error);
         useR2 = 1; 
@@ -420,10 +420,10 @@ void Tasks2_2() {
         OSMutexPost(R2);
         useR2 = 0 ;
       } // else if 
-      if ( OSTCBCur->computeTime == 2 && !useR1 ) {
-        OSMutexPend(R1, 5, &error);
-        useR1 = 1; 
-      } // else if 
+      // if ( OSTCBCur->computeTime == 2 && !useR1 ) {
+      //   OSMutexPend(R1, 5, &error);
+      //   useR1 = 1; 
+      // } // else if 
     }  
     // Release mutex
     OSMutexPost(R1);
