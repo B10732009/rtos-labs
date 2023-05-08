@@ -69,7 +69,7 @@ static  void  OS_InitTaskStat(void);
 static  void  OS_InitTCBList(void);
 
 /* self-defined functions */
-static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId);
+static  void  coreAddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId);
 
 /*$PAGE*/
 /*
@@ -191,7 +191,7 @@ void  OSIntExit (void)
                 OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy];
 
                 /* 增加一筆preempt訊息到訊息佇列 */
-                AddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
+                coreAddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
                 
                 OSCtxSwCtr++;                              /* Keep track of the number of ctx switches */
                 OSIntCtxSw();                              /* Perform interrupt level ctx switch       */
@@ -309,7 +309,7 @@ void  OSStart (void)
         OSPrioHighRdy = (INT8U)((y << 3) + x);
         
         /* 增加一筆complete訊息到訊息佇列 */
-        AddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
+        coreAddMsgList(OSTimeGet(), 0, OSPrioCur, OSPrioHighRdy);
         
         OSPrioCur     = OSPrioHighRdy;
         OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy]; /* Point to highest priority task ready to run    */
@@ -896,7 +896,7 @@ void  OS_Sched (void)
             OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
             
             /* 增加一筆complete訊息到訊息佇列 */
-            AddMsgList(OSTimeGet(), 1, OSPrioCur, OSPrioHighRdy);
+            coreAddMsgList(OSTimeGet(), 1, OSPrioCur, OSPrioHighRdy);
             
             OSCtxSwCtr++;                              /* Increment context switch counter             */
             OS_TASK_SW();                              /* Perform a context switch                     */
@@ -1127,7 +1127,7 @@ INT8U  OS_TCBInit (INT8U prio, OS_STK *ptos, OS_STK *pbos, INT16U id, INT32U stk
 }
 
 /* self-defined functions */
-static  void  AddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) {
+static  void  coreAddMsgList(int _tick, int _event, int _fromTaskId, int _toTaskId) {
     /* 尋找訊息佇列尾端 */
     msgTemp = msgList;
     while (msgTemp->next)

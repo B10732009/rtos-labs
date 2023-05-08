@@ -340,7 +340,8 @@ void  OSMutexPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
         pevent->OSEventCnt |= OSTCBCur->OSTCBPrio;         /*      Save priority of owning task        */
         pevent->OSEventPtr  = (void *)OSTCBCur;            /*      Point to owning task's OS_TCB       */
         ptcb  = (OS_TCB *)(pevent->OSEventPtr);            /*     Point to TCB of mutex owner          */ /* henry modified */
-        if ( mprio > pip ) { 
+        
+        if (mprio > pip) { 
             if ((OSRdyTbl[ptcb->OSTCBY] & ptcb->OSTCBBitX) != 0x00) { /*     See if mutex owner is ready   */ 
                                                                     /*     Yes, Remove owner from Rdy ...*/ 
                                                                     /*          ... list at current prio */ 
@@ -366,10 +367,11 @@ void  OSMutexPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
                 OSRdyTbl[ptcb->OSTCBY] |= ptcb->OSTCBBitX;
             }
             OSTCBPrioTbl[pip]       = (OS_TCB *)ptcb;          /* henry modified */
-        } // if
+        }
         else {
           mutexAddMsgList(OSTimeGet(), 2, pip, mprio, mprio);       /* henry modified */
-        } // else 
+        }
+
         OS_EXIT_CRITICAL();
         *err  = OS_NO_ERR;
         return;                                            
@@ -463,12 +465,13 @@ INT8U  OSMutexPost (OS_EVENT *pevent)
         OS_EXIT_CRITICAL();
         return (OS_ERR_NOT_MUTEX_OWNER);
     }
-    if ( OSTCBCur->OSTCBPrio <= pip ) {                 /* Did we have to raise current task's priority? */ /* henry modified */
+    if (OSTCBCur->OSTCBPrio <= pip) {                 /* Did we have to raise current task's priority? */ /* henry modified */
                                                       /* Yes, Return to original priority              */
                                                       /*      Remove owner from ready list at 'pip'    */
         if ((OSRdyTbl[OSTCBCur->OSTCBY] &= ~OSTCBCur->OSTCBBitX) == 0) {
             OSRdyGrp &= ~OSTCBCur->OSTCBBitY;
         }
+        
         temp_prio = OSTCBCur->OSTCBPrio;
         OSTCBCur->OSTCBPrio         = prio;
         OSPrioCur                   = OSTCBCur->OSTCBPrio;  /* henry modified */
@@ -479,6 +482,7 @@ INT8U  OSMutexPost (OS_EVENT *pevent)
         OSRdyGrp                   |= OSTCBCur->OSTCBBitY;
         OSRdyTbl[OSTCBCur->OSTCBY] |= OSTCBCur->OSTCBBitX;
         OSTCBPrioTbl[prio]          = (OS_TCB *)OSTCBCur;
+
         mutexAddMsgList(OSTimeGet(), 3, pip, temp_prio, prio);   /* henry modified */
     }
     OSTCBPrioTbl[pip] = (OS_TCB *)1;                  /* Reserve table entry                           */
