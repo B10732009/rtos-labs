@@ -54,7 +54,26 @@ Two sets of periodic tasks
 
 #### Objectives ####
 
-- To implement **Ceiling Priority Protocol** for ucOS’s mutex locks
+- To implement **Ceiling Priority Protocol (CPP)** for ucOS’s mutex locks
 
+#### Task Sets ####
 
+Two scenario
+- Scenario 1 : removing multiple blockings
+
+    <img src="img/lab3s1.png">
+
+- Scenario 2 : avoiding deadlocks
     
+    <img src="img/lab3s2.png">
+
+#### Notes ####
+
+- For the pointers pointing to error message, the memory should be allocated before passing it as parameter (`OSMutexCreate`, `OSMutexPend`)
+    ```c
+    INT8U R1_error;
+    R1 = OSMutexCreate(1, &R1_error);
+    ...
+    INT8U error;
+    OSMutexPend(R1, 5, &error);
+    ```
